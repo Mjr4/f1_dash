@@ -66,4 +66,4 @@ tests/
 
 ## Estado
 
-Fase 0 hecha (`pyproject.toml`, `.gitignore`, esqueleto de paquetes, `data/cache.py`); faltan venv y primer commit. Fase 1 hecha (`data/schedule.py`, `data/sessions.py`, `scripts/phase1_check.py`). Siguiente paso: Fase 2.
+Fase 0 hecha (`pyproject.toml`, `.gitignore`, esqueleto de paquetes, `data/cache.py`). Fase 1 hecha (`data/schedule.py`, `data/sessions.py`, `scripts/phase1_check.py`). Fase 2 hecha (`sampling/laps.py`, `sampling/telemetry.py`). Siguiente paso: Fase 3.
