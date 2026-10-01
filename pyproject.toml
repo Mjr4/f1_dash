@@ -1,0 +1,25 @@
+[project]
+name = "f1-dash"
+version = "0.1.0"
+description = "Dashboard personalizable de F1 sobre FastF1"
+requires-python = ">=3.11"
+dependencies = [
+    "fastf1",
+    "pandas",
+    "plotly",
+    "pydantic>=2",
+    "streamlit",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
