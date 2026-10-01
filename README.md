@@ -44,7 +44,7 @@ tests/
 
 ### Fase 3 – Paneles (`panels/`)
 - Interfaz común: un panel es una clase pydantic cuyos campos son sus parámetros (su JSON Schema permite generar los controles en cualquier UI). Declara qué dataset necesita y devuelve una figura Plotly (serializable a JSON).
-- Una única función `render(panel, session)` orquesta data -> sampling -> panel; la UI solo la llama.
+- Una única función `render(panel, year, event, session_type)` carga la sesión (con la telemetría solo si el panel la necesita) y dibuja; la UI solo la llama.
 - Registro de paneles (`registry.py`) para agregar uno nuevo sin tocar el resto.
 - Paneles iniciales: tabla de resultados, tiempos por vuelta, comparativa de telemetría (velocidad/acelerador/freno vs distancia), estrategia de neumáticos.
 
@@ -66,4 +66,4 @@ tests/
 
 ## Estado
 
-Fase 0 hecha (`pyproject.toml`, `.gitignore`, esqueleto de paquetes, `data/cache.py`). Fase 1 hecha (`data/schedule.py`, `data/sessions.py`, `scripts/phase1_check.py`). Fase 2 hecha (`sampling/laps.py`, `sampling/telemetry.py`). Siguiente paso: Fase 3.
+Fase 0 hecha (`pyproject.toml`, `.gitignore`, esqueleto de paquetes, `data/cache.py`). Fase 1 hecha (`data/schedule.py`, `data/sessions.py`, `scripts/phase1_check.py`). Fase 2 hecha (`sampling/laps.py`, `sampling/telemetry.py`). Fase 3 hecha (`panels/registry.py`, `panels/builtin.py`). Siguiente paso: Fase 4.

@@ -1,0 +1,36 @@
+"""Contrato de paneles y registro. Un panel nuevo = subclase de Panel + @register."""
+from typing import ClassVar
+
+import plotly.graph_objects as go
+from pydantic import BaseModel
+
+from f1_dash.data.sessions import SessionData, load_session
+
+
+class Panel(BaseModel):
+    """Los campos son los parámetros del panel (`model_json_schema()` los describe a cualquier UI)."""
+
+    id: ClassVar[str]
+    title: ClassVar[str]
+    needs_telemetry: ClassVar[bool] = False
+
+    def figure(self, data: SessionData) -> go.Figure:
+        raise NotImplementedError
+
+
+REGISTRY: dict[str, type[Panel]] = {}
+
+
+def register(cls: type[Panel]) -> type[Panel]:
+    REGISTRY[cls.id] = cls
+    return cls
+
+
+def create(panel_id: str, params: dict | None = None) -> Panel:
+    return REGISTRY[panel_id](**(params or {}))
+
+
+def render(panel: Panel, year: int, event: str | int, session_type: str) -> go.Figure:
+    """Único punto de entrada para la UI: carga (con caché) lo que el panel necesita y dibuja."""
+    data = load_session(year, event, session_type, telemetry=panel.needs_telemetry)
+    return panel.figure(data)
