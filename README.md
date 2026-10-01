@@ -66,4 +66,4 @@ tests/
 
 ## Estado
 
-Fase 0 hecha (`pyproject.toml`, `.gitignore`, esqueleto de paquetes, `data/cache.py`). Fase 1 hecha (`data/schedule.py`, `data/sessions.py`, `scripts/phase1_check.py`). Fase 2 hecha (`sampling/laps.py`, `sampling/telemetry.py`). Fase 3 hecha (`panels/registry.py`, `panels/builtin.py`). Siguiente paso: Fase 4.
+Fase 0 hecha (`pyproject.toml`, `.gitignore`, esqueleto de paquetes, `data/cache.py`). Fase 1 hecha (`data/schedule.py`, `data/sessions.py`, `scripts/phase1_check.py`). Fase 2 hecha (`sampling/laps.py`, `sampling/telemetry.py`). Fase 3 hecha (`panels/registry.py`, `panels/builtin.py`). Fase 4 hecha (`layout/model.py`). Siguiente paso: Fase 5.
