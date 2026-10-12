@@ -19,7 +19,7 @@ def _data(session_type="R"):
 
 
 def test_registry_and_schema():
-    assert set(REGISTRY) == {"results", "lap_times", "telemetry", "tyre_strategy"}
+    assert set(REGISTRY) == {"results", "lap_times", "telemetry", "tyre_strategy", "best_laps"}
     assert "drivers" in create("lap_times").model_json_schema()["properties"]
 
 

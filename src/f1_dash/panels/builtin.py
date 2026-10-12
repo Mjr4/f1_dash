@@ -96,3 +96,18 @@ class TyreStrategy(Panel):
                         name=comp, marker={"color": COMPOUND_COLORS.get(comp, "#888"), "line": {"color": "black", "width": 1}})
         return fig.update_layout(barmode="overlay", xaxis_title="Vuelta",
                                  yaxis={"categoryorder": "array", "categoryarray": order[::-1]})
+
+
+@register
+class BestLaps(Panel):
+    id = "best_laps"
+    title = "Mejor vuelta por piloto"
+    top: int = 10  # cuántos pilotos mostrar
+
+    def figure(self, data: SessionData) -> go.Figure:
+        best = data.laps.dropna(subset=["LapTime"]).groupby("Driver")["LapTime"].min().nsmallest(self.top)
+        secs = best.dt.total_seconds()
+        fig = go.Figure(go.Bar(y=best.index, x=secs - secs.min(), orientation="h",
+                               text=[_fmt(t) for t in best]))
+        return fig.update_layout(xaxis_title="Diferencia vs. la mejor (s)",
+                                 yaxis={"categoryorder": "array", "categoryarray": best.index[::-1]})
