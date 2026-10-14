@@ -49,7 +49,7 @@ tests/
 - Paneles iniciales: tabla de resultados, tiempos por vuelta, comparativa de telemetría (velocidad/acelerador/freno vs distancia), estrategia de neumáticos.
 
 ### Fase 4 – Layout personalizable (`layout/`)
-- Modelo: `{"version": 1, "panels": [{panel_id, params}, ...]}` (lista ordenada), serializable a JSON; guardar y cargar desde disco.
+- Modelo: `{"version": 1, "panels": [{panel_id, params}, ...]}` (lista ordenada, con `span` opcional de 1 a 3 tercios de fila, por defecto 3), serializable a JSON; guardar y cargar desde disco.
 - Operaciones: agregar, quitar, reordenar y configurar paneles.
 
 ### Fase 5 – UI Streamlit (`ui/app.py`)

@@ -53,11 +53,13 @@ if err := st.session_state.pop("error", None):
 if not layout.panels:
     st.info("Agrega paneles desde la barra lateral.")
 
-for i, item in enumerate(layout.panels):
+def draw(i: int, item):
     panel = item.panel()
     with st.container(border=True):
-        head, up, down, rm = st.columns([8, 1, 1, 1])
+        head, wid, up, down, rm = st.columns([5, 3, 1, 1, 1])
         head.subheader(panel.title)
+        wid.selectbox("Ancho", [1, 2, 3], index=item.span - 1, format_func=lambda n: f"{n}/3", key=f"sp{i}-{item.span}",
+                      label_visibility="collapsed", on_change=lambda: attempt(layout.set_span, i, st.session_state[f"sp{i}-{item.span}"]))
         up.button("↑", key=f"up{i}", on_click=attempt, args=(layout.move, i, max(i - 1, 0)), disabled=i == 0)
         down.button("↓", key=f"dn{i}", on_click=attempt, args=(layout.move, i, i + 1), disabled=i == len(layout.panels) - 1)
         rm.button("✕", key=f"rm{i}", on_click=attempt, args=(layout.remove, i))
@@ -71,3 +73,11 @@ for i, item in enumerate(layout.panels):
                 st.plotly_chart(render(panel, year, event, session_type), key=f"fig{i}", width='stretch')
         except DataError as e:
             st.warning(str(e))
+
+
+for row in layout.rows():
+    spans = [layout.panels[i].span for i in row]
+    cols = st.columns(spans + [3 - sum(spans)] if sum(spans) < 3 else spans)
+    for col, i in zip(cols, row):
+        with col:
+            draw(i, layout.panels[i])

@@ -33,3 +33,17 @@ def test_loads_roundtrip():
     lay = Layout()
     lay.add("results")
     assert Layout.loads(lay.model_dump_json().encode()) == lay
+
+
+def test_span_rows_and_compat():
+    lay = Layout()
+    for _ in range(4):
+        lay.add("results")
+    lay.set_span(0, 2)
+    lay.set_span(1, 1)
+    lay.set_span(2, 2)
+    assert lay.rows() == [[0, 1], [2], [3]]
+    with pytest.raises(ValueError):
+        lay.set_span(0, 4)
+    assert Layout.loads('{"version":1,"panels":[{"panel_id":"results"}]}').panels[0].span == 3
+    assert Layout.loads(lay.model_dump_json()) == lay
