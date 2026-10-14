@@ -56,9 +56,10 @@ if not layout.panels:
 def draw(i: int, item):
     panel = item.panel()
     with st.container(border=True):
-        head, menu = st.columns([6, 2])
+        compact = item.span == 1  # a 1/3 no caben los botones: van en un popover
+        head, *menu = st.columns([6, 2] if compact else [5, 1, 1, 1, 1, 1])
         head.markdown(f"**{panel.title}**")
-        nar, wid, up, down, rm = menu.popover("⚙", width="stretch").columns(5)
+        nar, wid, up, down, rm = menu[0].popover("⚙", width="stretch").columns(5) if compact else menu
         nar.button("←", key=f"nr{i}", help="Estrechar", on_click=attempt, args=(layout.set_span, i, item.span - 1), disabled=item.span == 1)
         wid.button("→", key=f"wd{i}", help="Ensanchar", on_click=attempt, args=(layout.set_span, i, item.span + 1), disabled=item.span == 3)
         up.button("↑", key=f"up{i}", help="Mover atrás", on_click=attempt, args=(layout.move, i, max(i - 1, 0)), disabled=i == 0)
