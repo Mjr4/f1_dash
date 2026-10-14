@@ -27,3 +27,9 @@ def test_invalid_rejected(tmp_path):
     (tmp_path / "v.json").write_text('{"version": 2, "panels": []}')
     with pytest.raises(ValueError):
         Layout.load(tmp_path / "v.json")
+
+
+def test_loads_roundtrip():
+    lay = Layout()
+    lay.add("results")
+    assert Layout.loads(lay.model_dump_json().encode()) == lay

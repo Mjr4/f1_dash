@@ -1,6 +1,5 @@
 """UI Streamlit: solo renderiza. Toda la lógica vive en data/sampling/panels/layout."""
 import json
-from pathlib import Path
 
 import streamlit as st
 
@@ -40,16 +39,13 @@ with st.sidebar:
     st.button("Agregar panel", on_click=attempt, args=(layout.add, panel_id), width='stretch')
 
     st.divider()
-    path = st.text_input("Archivo de layout", "layouts/default.json")
-    c1, c2 = st.columns(2)
-    if c1.button("Guardar", width='stretch'):
-        Path(path).parent.mkdir(parents=True, exist_ok=True)
-        attempt(layout.save, path)
+    st.download_button("Descargar layout", layout.model_dump_json(indent=2), "layout.json", "application/json", width='stretch')
+    upload = st.file_uploader("Cargar layout", type="json")
 
     def load():
-        st.session_state.layout = Layout.load(path)
+        st.session_state.layout = Layout.loads(upload.getvalue())
 
-    c2.button("Cargar", on_click=attempt, args=(load,), width='stretch')
+    st.button("Cargar", on_click=attempt, args=(load,), disabled=upload is None, width='stretch')
 
 if err := st.session_state.pop("error", None):
     st.error(err)

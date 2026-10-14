@@ -39,7 +39,11 @@ class Layout(BaseModel):
 
     @classmethod
     def load(cls, path: Path | str) -> "Layout":
-        layout = cls.model_validate_json(Path(path).read_text())
+        return cls.loads(Path(path).read_text())
+
+    @classmethod
+    def loads(cls, text: str | bytes) -> "Layout":
+        layout = cls.model_validate_json(text)
         if layout.version != 1:
             raise ValueError(f"versión de layout no soportada: {layout.version}")
         for item in layout.panels:

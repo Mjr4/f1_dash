@@ -55,14 +55,14 @@ tests/
 ### Fase 5 – UI Streamlit (`ui/app.py`)
 - Barra lateral: temporada -> evento -> sesión, y catálogo de paneles.
 - Área principal: renderiza el layout; el usuario agrega, quita y ordena paneles.
-- Guardar/cargar layout.
+- Descargar/subir el layout como JSON (sin estado en el servidor: el disco de Streamlit Community Cloud es efímero y compartido).
 
 ## Verificación
 
 - Tests con pytest por capa, con fixtures pequeños de una sesión real para no depender de la red.
 - Fase 1: script que carga una sesión (ej. 2021 French GP, `'Q'`), imprime resultados y vuelta más rápida; la segunda ejecución debe ser rápida (caché).
 - Aislamiento: `grep -r streamlit src/f1_dash/{data,sampling,panels,layout}` no debe devolver nada.
-- End-to-end: `streamlit run src/f1_dash/ui/app.py`, elegir un evento pasado, agregar 2-3 paneles, reordenarlos, guardar y recargar el layout.
+- End-to-end: `streamlit run src/f1_dash/ui/app.py`, elegir un evento pasado, agregar 2-3 paneles, reordenarlos, descargar y volver a subir el layout.
 
 ## Estado
 
