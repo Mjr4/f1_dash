@@ -29,3 +29,10 @@ def test_panels_render(monkeypatch):
     for sess in ("R", "Q"):
         for pid in REGISTRY:
             assert create(pid).figure(_data(sess)).data
+
+
+def test_all_params_documented():
+    from f1_dash.panels import REGISTRY
+    for cls in REGISTRY.values():
+        for name, f in cls.model_fields.items():
+            assert f.description, f"{cls.id}.{name} sin description"

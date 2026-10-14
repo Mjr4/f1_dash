@@ -4,6 +4,7 @@ from typing import Literal
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from pydantic import Field
 
 from f1_dash.data.sessions import SessionData, telemetry
 from f1_dash.sampling.laps import filter_laps, valid_laps
@@ -46,8 +47,8 @@ class ResultsTable(Panel):
 class LapTimes(Panel):
     id = "lap_times"
     title = "Tiempos por vuelta"
-    drivers: list[str] = []  # vacío = todos
-    only_valid: bool = True
+    drivers: list[str] = Field([], description='Códigos de piloto, ej. ["VER", "HAM"]. Vacío = todos.')
+    only_valid: bool = Field(True, description="true = solo vueltas rápidas válidas (sin in/out laps ni lentas); false = todas.")
 
     def figure(self, data: SessionData) -> go.Figure:
         laps = valid_laps(data.laps) if self.only_valid else data.laps
@@ -63,9 +64,10 @@ class TelemetryCompare(Panel):
     id = "telemetry"
     title = "Telemetría"
     needs_telemetry = True
-    drivers: list[str] = []  # vacío = los 2 primeros del resultado
-    lap: int | None = None  # None = vuelta más rápida de cada piloto
-    channels: list[Literal["Speed", "Throttle", "Brake"]] = ["Speed", "Throttle", "Brake"]
+    drivers: list[str] = Field([], description='Códigos de piloto, ej. ["VER", "HAM"]. Vacío = los 2 primeros del resultado.')
+    lap: int | None = Field(None, description="Número de vuelta. null = la más rápida de cada piloto.")
+    channels: list[Literal["Speed", "Throttle", "Brake"]] = Field(
+        ["Speed", "Throttle", "Brake"], description='Canales a mostrar: "Speed", "Throttle", "Brake".')
 
     def figure(self, data: SessionData) -> go.Figure:
         drivers = self.drivers or _top_drivers(data)
@@ -102,7 +104,7 @@ class TyreStrategy(Panel):
 class BestLaps(Panel):
     id = "best_laps"
     title = "Mejor vuelta por piloto"
-    top: int = 10  # cuántos pilotos mostrar
+    top: int = Field(10, description="Cuántos pilotos mostrar (los más rápidos).")
 
     def figure(self, data: SessionData) -> go.Figure:
         best = data.laps.dropna(subset=["LapTime"]).groupby("Driver")["LapTime"].min().nsmallest(self.top)

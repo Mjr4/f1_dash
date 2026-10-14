@@ -67,6 +67,8 @@ def draw(i: int, item):
         rm.button("✕", key=f"rm{i}", on_click=attempt, args=(layout.remove, i))
         if REGISTRY[item.panel_id].model_fields:
             with st.expander("Parámetros"):
+                for name, f in REGISTRY[item.panel_id].model_fields.items():
+                    st.caption(f"`{name}` (defecto: `{json.dumps(f.default)}`): {f.description}")
                 key = f"params{i}-{item.panel_id}-{json.dumps(panel.model_dump(), sort_keys=True)}"
                 st.text_area("JSON", json.dumps(panel.model_dump(), indent=2), key=key, label_visibility="collapsed")
                 st.button("Aplicar", key=f"ap{i}", on_click=apply_params, args=(i, key))
