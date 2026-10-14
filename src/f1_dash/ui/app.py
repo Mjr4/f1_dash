@@ -60,8 +60,8 @@ def draw(i: int, item):
         head.subheader(panel.title)
         wid.selectbox("Ancho", [1, 2, 3], index=item.span - 1, format_func=lambda n: f"{n}/3", key=f"sp{i}-{item.span}",
                       label_visibility="collapsed", on_change=lambda: attempt(layout.set_span, i, st.session_state[f"sp{i}-{item.span}"]))
-        up.button("↑", key=f"up{i}", on_click=attempt, args=(layout.move, i, max(i - 1, 0)), disabled=i == 0)
-        down.button("↓", key=f"dn{i}", on_click=attempt, args=(layout.move, i, i + 1), disabled=i == len(layout.panels) - 1)
+        up.button("←", key=f"up{i}", on_click=attempt, args=(layout.move, i, max(i - 1, 0)), disabled=i == 0)
+        down.button("→", key=f"dn{i}", on_click=attempt, args=(layout.move, i, i + 1), disabled=i == len(layout.panels) - 1)
         rm.button("✕", key=f"rm{i}", on_click=attempt, args=(layout.remove, i))
         if REGISTRY[item.panel_id].model_fields:
             with st.expander("Parámetros"):
