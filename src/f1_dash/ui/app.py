@@ -56,12 +56,12 @@ if not layout.panels:
 def draw(i: int, item):
     panel = item.panel()
     with st.container(border=True):
-        head, wid, up, down, rm = st.columns([5, 3, 1, 1, 1])
+        head, nar, wid, up, down, rm = st.columns([5, 1, 1, 1, 1, 1])
         head.subheader(panel.title)
-        wid.selectbox("Ancho", [1, 2, 3], index=item.span - 1, format_func=lambda n: f"{n}/3", key=f"sp{i}-{item.span}",
-                      label_visibility="collapsed", on_change=lambda: attempt(layout.set_span, i, st.session_state[f"sp{i}-{item.span}"]))
-        up.button("←", key=f"up{i}", on_click=attempt, args=(layout.move, i, max(i - 1, 0)), disabled=i == 0)
-        down.button("→", key=f"dn{i}", on_click=attempt, args=(layout.move, i, i + 1), disabled=i == len(layout.panels) - 1)
+        nar.button("←", key=f"nr{i}", help="Estrechar", on_click=attempt, args=(layout.set_span, i, item.span - 1), disabled=item.span == 1)
+        wid.button("→", key=f"wd{i}", help="Ensanchar", on_click=attempt, args=(layout.set_span, i, item.span + 1), disabled=item.span == 3)
+        up.button("↑", key=f"up{i}", help="Mover atrás", on_click=attempt, args=(layout.move, i, max(i - 1, 0)), disabled=i == 0)
+        down.button("↓", key=f"dn{i}", help="Mover adelante", on_click=attempt, args=(layout.move, i, i + 1), disabled=i == len(layout.panels) - 1)
         rm.button("✕", key=f"rm{i}", on_click=attempt, args=(layout.remove, i))
         if REGISTRY[item.panel_id].model_fields:
             with st.expander("Parámetros"):

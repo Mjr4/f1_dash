@@ -26,6 +26,6 @@ def test_app_span():
     at.sidebar.selectbox[1].select("French Grand Prix")
     at.sidebar.selectbox[3].select("tyre_strategy").run()
     at.sidebar.button[0].click().run()
-    at.selectbox(key="sp0-3").select(2).run()
+    at.button(key="nr0").click().run()
     assert not at.exception
     assert at.session_state.layout.panels[0].span == 2
