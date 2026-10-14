@@ -57,7 +57,7 @@ def draw(i: int, item):
     panel = item.panel()
     with st.container(border=True):
         head, nar, wid, up, down, rm = st.columns([5, 1, 1, 1, 1, 1])
-        head.subheader(panel.title)
+        head.markdown(f"**{panel.title}**")
         nar.button("←", key=f"nr{i}", help="Estrechar", on_click=attempt, args=(layout.set_span, i, item.span - 1), disabled=item.span == 1)
         wid.button("→", key=f"wd{i}", help="Ensanchar", on_click=attempt, args=(layout.set_span, i, item.span + 1), disabled=item.span == 3)
         up.button("↑", key=f"up{i}", help="Mover atrás", on_click=attempt, args=(layout.move, i, max(i - 1, 0)), disabled=i == 0)
@@ -70,7 +70,9 @@ def draw(i: int, item):
                 st.button("Aplicar", key=f"ap{i}", on_click=apply_params, args=(i, key))
         try:
             with st.spinner("Cargando datos..."):
-                st.plotly_chart(render(panel, year, event, session_type), key=f"fig{i}", width='stretch')
+                fig = render(panel, year, event, session_type)
+                fig.update_layout(height=300 + 80 * len(list(fig.select_yaxes())), margin=dict(l=10, r=10, t=30, b=10))
+                st.plotly_chart(fig, key=f"fig{i}", width='stretch')
         except DataError as e:
             st.warning(str(e))
 
