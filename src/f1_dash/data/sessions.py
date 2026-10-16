@@ -92,7 +92,11 @@ def telemetry(data: SessionData, driver: str, lap: int | None = None) -> pd.Data
     Requiere `load_session(..., telemetry=True)`.
     """
     laps = data._raw.laps.pick_drivers(driver)
-    l = laps.pick_fastest() if lap is None else laps[laps["LapNumber"] == lap].iloc[0]
+    if lap is None:
+        l = laps.pick_fastest()
+    else:
+        sel = laps[laps["LapNumber"] == lap]
+        l = sel.iloc[0] if len(sel) else None
     if l is None:
-        raise SessionNotAvailable(f"{driver}: sin vuelta válida")
+        raise SessionNotAvailable(f"{driver}: sin vuelta {'válida' if lap is None else lap}")
     return pd.DataFrame(l.get_telemetry().add_distance())

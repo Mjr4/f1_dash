@@ -34,3 +34,16 @@ def test_flags_reuse_cache(monkeypatch):
     sessions.load_session(*args, telemetry=True)
     assert s.load.call_count == 2  # lo cacheado ya cubre ambos
     sessions._CACHE.clear()
+
+
+def test_telemetry_vuelta_inexistente():
+    import pandas as pd
+    import pytest
+    from types import SimpleNamespace
+    from f1_dash.data.sessions import SessionNotAvailable, telemetry
+
+    laps = pd.DataFrame({"LapNumber": [1, 2]})
+    laps.pick_drivers = lambda d: laps  # DataFrame admite atributos sueltos solo vía asignación
+    data = SimpleNamespace(_raw=SimpleNamespace(laps=laps))
+    with pytest.raises(SessionNotAvailable, match="99"):
+        telemetry(data, "VER", 99)
