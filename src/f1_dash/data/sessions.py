@@ -1,6 +1,5 @@
 """Carga de sesiones: devuelve DataFrames/dataclasses, no objetos de FastF1."""
 from dataclasses import dataclass, field
-from functools import lru_cache
 
 import fastf1
 import pandas as pd
@@ -32,7 +31,9 @@ class SessionData:
     _raw: object = field(repr=False, compare=False)  # fastf1.Session, solo para telemetry()
 
 
-@lru_cache(maxsize=8)
+_CACHE: dict[tuple, tuple[tuple[bool, ...], SessionData]] = {}  # (año, evento, sesión) -> (flags, datos)
+
+
 def load_session(
     year: int,
     event: str | int,
@@ -43,8 +44,25 @@ def load_session(
 ) -> SessionData:
     """`event` es el nombre exacto del calendario o el número de ronda.
 
-    Cacheada en memoria: `session.load()` es lento incluso con caché de disco.
+    Cacheada en memoria por (año, evento, sesión): `session.load()` es lento incluso con
+    caché de disco. Si lo cacheado no cubre los flags pedidos, recarga una vez con la unión.
     """
+    key = (year, event, session_type)
+    want = (telemetry, weather, messages)
+    if key in _CACHE:
+        have, data = _CACHE[key]
+        if all(h or not w for h, w in zip(have, want)):
+            return data
+        want = tuple(h or w for h, w in zip(have, want))
+        telemetry, weather, messages = want
+    data = _load(year, event, session_type, telemetry, weather, messages)
+    if len(_CACHE) >= 8 and key not in _CACHE:
+        _CACHE.pop(next(iter(_CACHE)))  # descarta la más antigua
+    _CACHE[key] = (want, data)
+    return data
+
+
+def _load(year, event, session_type, telemetry, weather, messages) -> SessionData:
     enable_cache()
     try:
         s = fastf1.get_session(year, event, session_type)
