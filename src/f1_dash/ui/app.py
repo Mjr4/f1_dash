@@ -55,8 +55,11 @@ if not layout.panels:
 
 @st.cache_data(max_entries=64, ttl=3600, show_spinner="Cargando datos...")
 def cached_figure(panel_id: str, params_json: str, year: int, event: str, session_type: str):
-    """Figura ya armada, cacheada por panel+params+sesión (solo UI; los DataError no se cachean)."""
-    fig = render(create(panel_id, json.loads(params_json)), year, event, session_type)
+    """Figura (o texto del DataError) cacheada por panel+params+sesión; así un panel fallido no se re-ejecuta en cada rerun."""
+    try:
+        fig = render(create(panel_id, json.loads(params_json)), year, event, session_type)
+    except DataError as e:
+        return str(e)
     return fig.update_layout(height=300 + 80 * len(list(fig.select_yaxes())), margin=dict(l=10, r=10, t=30, b=10))
 
 
@@ -79,11 +82,11 @@ def draw(i: int, item):
                 key = f"params{i}-{item.panel_id}-{json.dumps(panel.model_dump(), sort_keys=True)}"
                 st.text_area("JSON", json.dumps(panel.model_dump(), indent=2), key=key, label_visibility="collapsed")
                 st.button("Aplicar", key=f"ap{i}", on_click=apply_params, args=(i, key))
-        try:
-            fig = cached_figure(item.panel_id, json.dumps(panel.model_dump(), sort_keys=True), year, event, session_type)
+        fig = cached_figure(item.panel_id, json.dumps(panel.model_dump(), sort_keys=True), year, event, session_type)
+        if isinstance(fig, str):
+            st.warning(fig)
+        else:
             st.plotly_chart(fig, key=f"fig{i}", width='stretch')
-        except DataError as e:
-            st.warning(str(e))
 
 
 for row in layout.rows():
