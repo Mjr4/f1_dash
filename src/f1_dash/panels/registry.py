@@ -13,6 +13,7 @@ class Panel(BaseModel):
     id: ClassVar[str]
     title: ClassVar[str]
     needs_telemetry: ClassVar[bool] = False
+    needs_weather: ClassVar[bool] = False
 
     def figure(self, data: SessionData) -> go.Figure:
         raise NotImplementedError
@@ -32,5 +33,5 @@ def create(panel_id: str, params: dict | None = None) -> Panel:
 
 def render(panel: Panel, year: int, event: str | int, session_type: str) -> go.Figure:
     """Único punto de entrada para la UI: carga (con caché) lo que el panel necesita y dibuja."""
-    data = load_session(year, event, session_type, telemetry=panel.needs_telemetry)
+    data = load_session(year, event, session_type, telemetry=panel.needs_telemetry, weather=panel.needs_weather)
     return panel.figure(data)

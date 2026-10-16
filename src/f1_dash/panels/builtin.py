@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from pydantic import Field
 
-from f1_dash.data.sessions import SessionData, driver_style, telemetry
+from f1_dash.data.sessions import SessionData, SessionNotAvailable, driver_style, telemetry
 from f1_dash.sampling.laps import filter_laps, valid_laps
 from f1_dash.sampling.telemetry import distance_grid, downsample, resample_distance
 
@@ -113,3 +113,73 @@ class BestLaps(Panel):
                                text=[_fmt(t) for t in best]))
         return fig.update_layout(xaxis_title="Diferencia vs. la mejor (s)",
                                  yaxis={"categoryorder": "array", "categoryarray": best.index[::-1]})
+
+
+@register
+class Positions(Panel):
+    id = "positions"
+    title = "Posiciones por vuelta"
+    drivers: list[str] = Field([], description='Códigos de piloto, ej. ["VER", "HAM"]. Vacío = todos.')
+
+    def figure(self, data: SessionData) -> go.Figure:
+        laps = filter_laps(data.laps, self.drivers or None).dropna(subset=["Position"])
+        if laps.empty:  # Q y prácticas no traen Position
+            raise SessionNotAvailable("Esta sesión no tiene posiciones por vuelta (solo carreras y sprints).")
+        fig = go.Figure()
+        for drv, g in laps.groupby("Driver"):
+            fig.add_scatter(x=g["LapNumber"], y=g["Position"], name=drv, mode="lines", line=driver_style(data, drv))
+        return fig.update_layout(xaxis_title="Vuelta", yaxis={"title": "Posición", "autorange": "reversed"})
+
+
+@register
+class RacePace(Panel):
+    id = "race_pace"
+    title = "Ritmo de carrera"
+    drivers: list[str] = Field([], description='Códigos de piloto, ej. ["VER", "HAM"]. Vacío = todos.')
+    by_compound: bool = Field(True, description="true = una caja por compuesto; false = una por piloto.")
+
+    def figure(self, data: SessionData) -> go.Figure:
+        laps = filter_laps(valid_laps(data.laps), self.drivers or None)
+        present = set(laps["Driver"])
+        order = [d for d in data.results.sort_values("Position")["Abbreviation"] if d in present]
+        fig = go.Figure()
+        for comp, g in (laps.groupby("Compound") if self.by_compound else [(None, laps)]):
+            fig.add_box(x=g["Driver"], y=g["LapTime"].dt.total_seconds(), name=comp or "Todas",
+                        marker_color=COMPOUND_COLORS.get(comp))
+        return fig.update_layout(boxmode="group", yaxis_title="Tiempo (s)",
+                                 xaxis={"categoryorder": "array", "categoryarray": order})
+
+
+@register
+class TrackMap(Panel):
+    id = "track_map"
+    title = "Mapa del circuito (velocidad)"
+    needs_telemetry = True
+    driver: str | None = Field(None, description="Código de piloto. null = el primero del resultado.")
+    lap: int | None = Field(None, description="Número de vuelta. null = la más rápida del piloto.")
+
+    def figure(self, data: SessionData) -> go.Figure:
+        drv = self.driver or _top_drivers(data, 1)[0]
+        t = telemetry(data, drv, self.lap).dropna(subset=["X", "Y"])
+        fig = go.Figure(go.Scatter(x=t["X"], y=t["Y"], mode="markers", marker={
+            "color": t["Speed"], "colorscale": "Turbo", "colorbar": {"title": "km/h"}, "size": 4}))
+        return fig.update_layout(title=drv, yaxis={"scaleanchor": "x", "visible": False}, xaxis={"visible": False})
+
+
+@register
+class Weather(Panel):
+    id = "weather"
+    title = "Clima"
+    needs_weather = True
+    channels: list[Literal["AirTemp", "TrackTemp", "Humidity", "WindSpeed"]] = Field(
+        ["AirTemp", "TrackTemp"], description='Canales a mostrar: "AirTemp", "TrackTemp", "Humidity", "WindSpeed".')
+
+    def figure(self, data: SessionData) -> go.Figure:
+        w = data.weather
+        if w is None or w.empty:
+            raise SessionNotAvailable("Esta sesión no tiene datos de clima.")
+        x = w["Time"].dt.total_seconds() / 60
+        fig = go.Figure()
+        for ch in self.channels:  # humedad y viento van en el eje derecho: otra escala
+            fig.add_scatter(x=x, y=w[ch], name=ch, mode="lines", yaxis="y2" if ch in ("Humidity", "WindSpeed") else "y")
+        return fig.update_layout(xaxis_title="Minutos de sesión", yaxis2={"overlaying": "y", "side": "right"})

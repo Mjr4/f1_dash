@@ -47,6 +47,7 @@ tests/
 - Una única función `render(panel, year, event, session_type)` carga la sesión (con la telemetría solo si el panel la necesita) y dibuja; la UI solo la llama.
 - Registro de paneles (`registry.py`) para agregar uno nuevo sin tocar el resto.
 - Paneles iniciales: tabla de resultados, tiempos por vuelta, comparativa de telemetría (velocidad/acelerador/freno vs distancia), estrategia de neumáticos.
+- Paneles adicionales: posiciones por vuelta (solo carreras/sprints), ritmo de carrera (boxplot), mapa del circuito coloreado por velocidad y clima. Un panel declara lo que necesita (`needs_telemetry`, `needs_weather`) y `render` se lo pide a `load_session`.
 
 ### Fase 4 – Layout personalizable (`layout/`)
 - Modelo: `{"version": 1, "panels": [{panel_id, params}, ...]}` (lista ordenada, con `span` opcional de 1 a 3 tercios de fila, por defecto 3), serializable a JSON; guardar y cargar desde disco.
@@ -66,4 +67,4 @@ tests/
 
 ## Estado
 
-Fase 0 hecha (`pyproject.toml`, `.gitignore`, esqueleto de paquetes, `data/cache.py`). Fase 1 hecha (`data/schedule.py`, `data/sessions.py`, `scripts/phase1_check.py`). Fase 2 hecha (`sampling/laps.py`, `sampling/telemetry.py`). Fase 3 hecha (`panels/registry.py`, `panels/builtin.py`). Fase 4 hecha (`layout/model.py`). Fase 5 hecha (`ui/app.py`). Proyecto completo según el alcance inicial.
+Fase 0 hecha (`pyproject.toml`, `.gitignore`, esqueleto de paquetes, `data/cache.py`). Fase 1 hecha (`data/schedule.py`, `data/sessions.py`, `scripts/phase1_check.py`). Fase 2 hecha (`sampling/laps.py`, `sampling/telemetry.py`). Fase 3 hecha (`panels/registry.py`, `panels/builtin.py`). Fase 4 hecha (`layout/model.py`). Fase 5 hecha (`ui/app.py`). Proyecto completo según el alcance inicial. Paneles adicionales hechos (posiciones, ritmo, mapa, clima).
