@@ -47,3 +47,22 @@ def test_telemetry_vuelta_inexistente():
     data = SimpleNamespace(_raw=SimpleNamespace(laps=laps))
     with pytest.raises(SessionNotAvailable, match="99"):
         telemetry(data, "VER", 99)
+
+
+def test_cache_ttl_y_lru(monkeypatch):
+    from f1_dash.data import sessions
+
+    monkeypatch.setattr(sessions, "_load", lambda y, e, st, *f: (y, e, st))
+    monkeypatch.setattr(sessions, "_MAX", 2)
+    now = [0.0]
+    monkeypatch.setattr(sessions.time, "monotonic", lambda: now[0])
+    sessions._CACHE.clear()
+    sessions.load_session(1, "A", "R")
+    sessions.load_session(1, "B", "R")
+    sessions.load_session(1, "A", "R")  # A pasa a ser la más reciente
+    sessions.load_session(1, "C", "R")  # expulsa B (LRU)
+    assert set(sessions._CACHE) == {(1, "A", "R"), (1, "C", "R")}
+    now[0] = sessions._TTL + 1
+    sessions.load_session(1, "A", "R")  # vencida: recarga con t nuevo
+    assert sessions._CACHE[(1, "A", "R")][2] == now[0]
+    sessions._CACHE.clear()

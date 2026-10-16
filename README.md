@@ -36,7 +36,7 @@ tests/
 - `schedule.py`: temporadas y eventos disponibles (`fastf1.get_event_schedule`).
 - `sessions.py`: `load_session(year, event, session_type)` con `session.load()` y carga parcial (telemetría, clima y mensajes opcionales).
 - Devuelve DataFrames (vueltas, telemetría) y dataclasses (metadatos de evento/sesión) en vez de exponer objetos de FastF1 hacia arriba.
-- `load_session` va con `functools.lru_cache`: la sesión se carga una sola vez y se reutiliza entre paneles e interacciones de la UI (el caché de disco de FastF1 no evita el costo de `session.load()`).
+- `load_session` va con un caché en memoria TTL+LRU (stdlib, en `data/sessions.py`): la sesión se carga una sola vez y se reutiliza entre paneles e interacciones de la UI (el caché de disco de FastF1 no evita el costo de `session.load()`).
 - Errores: sesión inexistente, datos no disponibles, coincidencia difusa de nombre (validar el evento devuelto).
 
 ### Fase 2 – Capa de muestreo (`sampling/`)

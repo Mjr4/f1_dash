@@ -1,4 +1,7 @@
 """Carga de sesiones: devuelve DataFrames/dataclasses, no objetos de FastF1."""
+import threading
+import time
+from collections import OrderedDict
 from dataclasses import dataclass, field
 
 import fastf1
@@ -32,7 +35,10 @@ class SessionData:
     _raw: object = field(repr=False, compare=False)  # fastf1.Session, solo para telemetry()
 
 
-_CACHE: dict[tuple, tuple[tuple[bool, ...], SessionData]] = {}  # (año, evento, sesión) -> (flags, datos)
+_MAX = 3  # el costo real es `_raw` (fastf1.Session, con telemetría pesa mucho)
+_TTL = 1800  # segundos; solo se evalúa al acceder
+_CACHE: OrderedDict[tuple, tuple[tuple[bool, ...], SessionData, float]] = OrderedDict()  # (año, evento, sesión) -> (flags, datos, t)
+_LOCK = threading.Lock()  # ponytail: lock global; se acepta carga duplicada ocasional, por clave si hay contención
 
 
 def load_session(
@@ -50,16 +56,23 @@ def load_session(
     """
     key = (year, event, session_type)
     want = (telemetry, weather, messages)
-    if key in _CACHE:
-        have, data = _CACHE[key]
-        if all(h or not w for h, w in zip(have, want)):
-            return data
-        want = tuple(h or w for h, w in zip(have, want))
-        telemetry, weather, messages = want
-    data = _load(year, event, session_type, telemetry, weather, messages)
-    if len(_CACHE) >= 8 and key not in _CACHE:
-        _CACHE.pop(next(iter(_CACHE)))  # descarta la más antigua
-    _CACHE[key] = (want, data)
+    with _LOCK:
+        hit = _CACHE.get(key)
+        if hit and time.monotonic() - hit[2] > _TTL:
+            del _CACHE[key]
+            hit = None
+        if hit:
+            have, data, _ = hit
+            if all(h or not w for h, w in zip(have, want)):
+                _CACHE.move_to_end(key)
+                return data
+            want = tuple(h or w for h, w in zip(have, want))
+    data = _load(year, event, session_type, *want)  # fuera del lock: es lento
+    with _LOCK:
+        _CACHE[key] = (want, data, time.monotonic())
+        _CACHE.move_to_end(key)
+        while len(_CACHE) > _MAX:
+            _CACHE.popitem(last=False)  # descarta la menos usada
     return data
 
 
