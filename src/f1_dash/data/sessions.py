@@ -54,7 +54,8 @@ def load_session(
     Cacheada en memoria por (año, evento, sesión): `session.load()` es lento incluso con
     caché de disco. Si lo cacheado no cubre los flags pedidos, recarga una vez con la unión.
     """
-    key = (year, event, session_type)
+    s = _resolve(year, event, session_type)
+    key = (year, s.event["EventName"], session_type)  # "Monza" y 5 comparten entrada
     want = (telemetry, weather, messages)
     with _LOCK:
         hit = _CACHE.get(key)
@@ -67,7 +68,7 @@ def load_session(
                 _CACHE.move_to_end(key)
                 return data
             want = tuple(h or w for h, w in zip(have, want))
-    data = _load(year, event, session_type, *want)  # fuera del lock: es lento
+    data = _load(s, year, session_type, *want)  # fuera del lock: es lento
     with _LOCK:
         _CACHE[key] = (want, data, time.monotonic())
         _CACHE.move_to_end(key)
@@ -76,7 +77,7 @@ def load_session(
     return data
 
 
-def _load(year, event, session_type, telemetry, weather, messages) -> SessionData:
+def _resolve(year, event, session_type):
     enable_cache()
     try:
         s = fastf1.get_session(year, event, session_type)
@@ -84,6 +85,10 @@ def _load(year, event, session_type, telemetry, weather, messages) -> SessionDat
         raise SessionNotAvailable(str(e)) from e
     if isinstance(event, str) and s.event["EventName"].lower() != event.lower():
         raise EventNotFound(f"{event!r} no coincide; ¿quisiste decir {s.event['EventName']!r}?")
+    return s
+
+
+def _load(s, year, session_type, telemetry, weather, messages) -> SessionData:
     try:
         s.load(laps=True, telemetry=telemetry, weather=weather, messages=messages)
     except Exception as e:  # FastF1 lanza tipos variados si la sesión no tiene datos

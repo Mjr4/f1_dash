@@ -50,9 +50,12 @@ def test_telemetry_vuelta_inexistente():
 
 
 def test_cache_ttl_y_lru(monkeypatch):
+    from types import SimpleNamespace
+
     from f1_dash.data import sessions
 
-    monkeypatch.setattr(sessions, "_load", lambda y, e, st, *f: (y, e, st))
+    monkeypatch.setattr(sessions, "_resolve", lambda y, e, st: SimpleNamespace(event={"EventName": str(e)}))
+    monkeypatch.setattr(sessions, "_load", lambda s, y, st, *f: (y, st))
     monkeypatch.setattr(sessions, "_MAX", 2)
     now = [0.0]
     monkeypatch.setattr(sessions.time, "monotonic", lambda: now[0])
@@ -65,4 +68,16 @@ def test_cache_ttl_y_lru(monkeypatch):
     now[0] = sessions._TTL + 1
     sessions.load_session(1, "A", "R")  # vencida: recarga con t nuevo
     assert sessions._CACHE[(1, "A", "R")][2] == now[0]
+    sessions._CACHE.clear()
+
+
+def test_clave_normalizada(monkeypatch):
+    from types import SimpleNamespace
+
+    from f1_dash.data import sessions
+
+    monkeypatch.setattr(sessions, "_resolve", lambda y, e, st: SimpleNamespace(event={"EventName": "Monza"}))
+    monkeypatch.setattr(sessions, "_load", lambda s, y, st, *f: object())
+    sessions._CACHE.clear()
+    assert sessions.load_session(1, 5, "R") is sessions.load_session(1, "Monza", "R")
     sessions._CACHE.clear()
