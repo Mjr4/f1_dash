@@ -36,3 +36,9 @@ def test_all_params_documented():
     for cls in REGISTRY.values():
         for name, f in cls.model_fields.items():
             assert f.description, f"{cls.id}.{name} sin description"
+
+
+def test_driver_style_desconocido():
+    from types import SimpleNamespace
+    from f1_dash.data.sessions import driver_style
+    assert driver_style(SimpleNamespace(_raw=None), "XXX") == {}
