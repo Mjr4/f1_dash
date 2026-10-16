@@ -123,6 +123,12 @@ def telemetry(data: SessionData, driver: str, lap: int | None = None) -> pd.Data
 
     Requiere `load_session(..., telemetry=True)`.
     """
+    try:
+        sin_telemetria = not data._raw.car_data  # load() solo lo registra en el log: "Car telemetry data is unavailable!"
+    except DataNotLoadedError:
+        sin_telemetria = True
+    if sin_telemetria:
+        raise SessionNotAvailable(f"{data.year} {data.event} {data.session_type}: la fuente no tiene telemetría de esta sesión.")
     laps = data._raw.laps.pick_drivers(driver)
     if lap is None:
         l = laps.pick_fastest()

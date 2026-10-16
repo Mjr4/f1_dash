@@ -44,7 +44,7 @@ def test_telemetry_vuelta_inexistente():
 
     laps = pd.DataFrame({"LapNumber": [1, 2]})
     laps.pick_drivers = lambda d: laps  # DataFrame admite atributos sueltos solo vía asignación
-    data = SimpleNamespace(_raw=SimpleNamespace(laps=laps))
+    data = SimpleNamespace(year=2021, event="X", session_type="R", _raw=SimpleNamespace(laps=laps, car_data={"1": 1}))
     with pytest.raises(SessionNotAvailable, match="99"):
         telemetry(data, "VER", 99)
 
@@ -107,3 +107,13 @@ def test_datos_no_cargados_son_dataerror():
     assert sessions._load(SinClima(), 2021, "R", False, True, False).weather is None
     with pytest.raises(SessionNotAvailable):
         sessions._load(SinVueltas(), 2021, "R", False, False, False)
+
+
+def test_telemetry_sesion_sin_telemetria():
+    from types import SimpleNamespace
+
+    from f1_dash.data.sessions import SessionNotAvailable, telemetry
+
+    data = SimpleNamespace(year=2026, event="X", session_type="R", _raw=SimpleNamespace(car_data={}))
+    with pytest.raises(SessionNotAvailable, match="no tiene telemetría"):
+        telemetry(data, "VER")

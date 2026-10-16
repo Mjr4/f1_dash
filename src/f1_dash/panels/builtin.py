@@ -163,11 +163,12 @@ class TrackMap(Panel):
             try:
                 t = telemetry(data, drv, self.lap).dropna(subset=["X", "Y"])
                 break
-            except SessionNotAvailable:
+            except SessionNotAvailable as e:
                 if self.driver:
                     raise
+                err = e
         else:
-            raise SessionNotAvailable("Sin datos de posición para los primeros pilotos; indica un piloto en los parámetros.")
+            raise err  # sin telemetría en toda la sesión, o ninguno de los 3 primeros tiene datos
         fig = go.Figure(go.Scatter(x=t["X"], y=t["Y"], mode="markers", marker={
             "color": t["Speed"], "colorscale": "Turbo", "colorbar": {"title": "km/h"}, "size": 4}))
         return fig.update_layout(title=drv, yaxis={"scaleanchor": "x", "visible": False}, xaxis={"visible": False})
