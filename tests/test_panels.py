@@ -71,3 +71,20 @@ def test_render_pide_clima(monkeypatch):
     monkeypatch.setattr(registry, "load_session", lambda *a, **kw: seen.update(kw) or _data())
     registry.render(create("weather"), 2021, "X GP", "R")
     assert seen == {"telemetry": False, "weather": True}
+
+
+def test_track_map_salta_piloto_sin_posicion(monkeypatch):
+    from f1_dash.data.sessions import SessionNotAvailable
+
+    tel = pd.DataFrame({"Speed": [100.0, 200], "X": [0.0, 1], "Y": [0.0, 1]})
+
+    def fake(data, drv, lap):
+        if drv == "AAA":
+            raise SessionNotAvailable("sin telemetría")
+        return tel
+
+    monkeypatch.setattr(builtin, "telemetry", fake)
+    assert create("track_map").figure(_data()).layout.title.text == "BBB"
+    import pytest
+    with pytest.raises(SessionNotAvailable):  # piloto explícito: no se sustituye en silencio
+        create("track_map", {"driver": "AAA"}).figure(_data())

@@ -159,8 +159,15 @@ class TrackMap(Panel):
     lap: int | None = Field(None, description="Número de vuelta. null = la más rápida del piloto.")
 
     def figure(self, data: SessionData) -> go.Figure:
-        drv = self.driver or _top_drivers(data, 1)[0]
-        t = telemetry(data, drv, self.lap).dropna(subset=["X", "Y"])
+        for drv in [self.driver] if self.driver else _top_drivers(data, 3):  # el 1º puede no tener posición
+            try:
+                t = telemetry(data, drv, self.lap).dropna(subset=["X", "Y"])
+                break
+            except SessionNotAvailable:
+                if self.driver:
+                    raise
+        else:
+            raise SessionNotAvailable("Sin datos de posición para los primeros pilotos; indica un piloto en los parámetros.")
         fig = go.Figure(go.Scatter(x=t["X"], y=t["Y"], mode="markers", marker={
             "color": t["Speed"], "colorscale": "Turbo", "colorbar": {"title": "km/h"}, "size": 4}))
         return fig.update_layout(title=drv, yaxis={"scaleanchor": "x", "visible": False}, xaxis={"visible": False})

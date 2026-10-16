@@ -133,7 +133,7 @@ def telemetry(data: SessionData, driver: str, lap: int | None = None) -> pd.Data
         raise SessionNotAvailable(f"{driver}: sin vuelta {'válida' if lap is None else lap}")
     try:
         return pd.DataFrame(l.get_telemetry().add_distance())
-    except DataNotLoadedError as e:
+    except (DataNotLoadedError, KeyError) as e:  # KeyError: FastF1 no trae car/pos data de ese piloto
         raise SessionNotAvailable(f"{driver}: sin telemetría en esta sesión") from e
 
 
