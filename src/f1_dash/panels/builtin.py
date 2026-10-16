@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from pydantic import Field
 
-from f1_dash.data.sessions import SessionData, telemetry
+from f1_dash.data.sessions import SessionData, driver_style, telemetry
 from f1_dash.sampling.laps import filter_laps, valid_laps
 from f1_dash.sampling.telemetry import distance_grid, downsample, resample_distance
 
@@ -55,7 +55,7 @@ class LapTimes(Panel):
         laps = filter_laps(laps, self.drivers or None)
         fig = go.Figure()
         for drv, g in laps.groupby("Driver"):
-            fig.add_scatter(x=g["LapNumber"], y=g["LapTime"].dt.total_seconds(), name=drv, mode="lines+markers")
+            fig.add_scatter(x=g["LapNumber"], y=g["LapTime"].dt.total_seconds(), name=drv, mode="lines+markers", line=driver_style(data, drv))
         return fig.update_layout(xaxis_title="Vuelta", yaxis_title="Tiempo (s)")
 
 
@@ -79,7 +79,7 @@ class TelemetryCompare(Panel):
             r = downsample(resample_distance(t, grid))
             for i, ch in enumerate(self.channels, 1):
                 fig.add_scatter(x=r["Distance"], y=r[ch], name=drv, legendgroup=drv,
-                                showlegend=i == 1, row=i, col=1, line={"color": None})
+                                showlegend=i == 1, row=i, col=1, line=driver_style(data, drv))
         return fig.update_xaxes(title_text="Distancia (m)", row=len(self.channels), col=1)
 
 
