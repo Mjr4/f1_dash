@@ -81,3 +81,29 @@ def test_clave_normalizada(monkeypatch):
     sessions._CACHE.clear()
     assert sessions.load_session(1, 5, "R") is sessions.load_session(1, "Monza", "R")
     sessions._CACHE.clear()
+
+
+def test_datos_no_cargados_son_dataerror():
+    import pandas as pd
+    from fastf1.exceptions import DataNotLoadedError
+
+    from f1_dash.data import sessions
+
+    def boom(self):
+        raise DataNotLoadedError("no cargado")
+
+    class S:  # como FastF1: load() no falla, pero el acceso a lo que no cargó sí
+        event = {"EventName": "X"}
+        results = pd.DataFrame()
+        def load(self, **kw): pass
+
+    class SinClima(S):
+        laps = pd.DataFrame()
+        weather_data = property(boom)
+
+    class SinVueltas(S):
+        laps = property(boom)
+
+    assert sessions._load(SinClima(), 2021, "R", False, True, False).weather is None
+    with pytest.raises(SessionNotAvailable):
+        sessions._load(SinVueltas(), 2021, "R", False, False, False)

@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 
 import fastf1
 import fastf1.plotting
+from fastf1.exceptions import DataNotLoadedError
 import pandas as pd
 
 from .cache import enable_cache
@@ -93,16 +94,28 @@ def _load(s, year, session_type, telemetry, weather, messages) -> SessionData:
         s.load(laps=True, telemetry=telemetry, weather=weather, messages=messages)
     except Exception as e:  # FastF1 lanza tipos variados si la sesión no tiene datos
         raise SessionNotAvailable(f"{year} {s.event['EventName']} {session_type}: {e}") from e
+    try:
+        results, laps = pd.DataFrame(s.results), pd.DataFrame(s.laps)
+    except DataNotLoadedError as e:  # load() registra el fallo en el log y sigue; el acceso lo revela
+        raise SessionNotAvailable(f"{year} {s.event['EventName']} {session_type}: {e}") from e
     return SessionData(
         year=year,
         event=s.event["EventName"],
         session_type=session_type,
-        results=pd.DataFrame(s.results),
-        laps=pd.DataFrame(s.laps),
-        weather=pd.DataFrame(s.weather_data) if weather else None,
-        messages=pd.DataFrame(s.race_control_messages) if messages else None,
+        results=results,
+        laps=laps,
+        weather=_opt(lambda: s.weather_data) if weather else None,
+        messages=_opt(lambda: s.race_control_messages) if messages else None,
         _raw=s,
     )
+
+
+def _opt(get) -> pd.DataFrame | None:
+    """Dato opcional: None si FastF1 no pudo cargarlo (el panel decide qué avisar)."""
+    try:
+        return pd.DataFrame(get())
+    except DataNotLoadedError:
+        return None
 
 
 def telemetry(data: SessionData, driver: str, lap: int | None = None) -> pd.DataFrame:
@@ -118,7 +131,10 @@ def telemetry(data: SessionData, driver: str, lap: int | None = None) -> pd.Data
         l = sel.iloc[0] if len(sel) else None
     if l is None:
         raise SessionNotAvailable(f"{driver}: sin vuelta {'válida' if lap is None else lap}")
-    return pd.DataFrame(l.get_telemetry().add_distance())
+    try:
+        return pd.DataFrame(l.get_telemetry().add_distance())
+    except DataNotLoadedError as e:
+        raise SessionNotAvailable(f"{driver}: sin telemetría en esta sesión") from e
 
 
 def driver_style(data: SessionData, driver: str) -> dict:
