@@ -15,15 +15,18 @@ def _data(session_type="R"):
                          "LapTime": [T(seconds=s) for s in (90, 91, 90.5, 92)], "Stint": [1, 2, 1, 1],
                          "Compound": ["SOFT", "HARD", "MEDIUM", "MEDIUM"],
                          "PitInTime": [pd.NaT] * 4, "PitOutTime": [pd.NaT] * 4,
-                         "Position": [1.0, 1.0, 2.0, 2.0]})
+                         "Position": [1.0, 1.0, 2.0, 2.0], "TyreLife": [1.0, 2, 1, 2],
+                         "Time": [T(seconds=s) for s in (90, 181, 91, 183)]})
     weather = pd.DataFrame({"Time": [T(minutes=m) for m in (0, 1, 2)], "AirTemp": [24.0, 24.1, 24.2],
                             "TrackTemp": [30.0, 31, 32], "Humidity": [50.0, 50, 51], "WindSpeed": [1.0, 1, 2]})
-    return SessionData(2021, "X GP", session_type, results, laps, weather, None, None)
+    messages = pd.DataFrame({"Lap": [1, 2], "Category": ["Flag", "Drs"], "Flag": ["GREEN", None], "Message": ["GREEN LIGHT", "DRS ENABLED"]})
+    return SessionData(2021, "X GP", session_type, results, laps, weather, messages, None)
 
 
 def test_registry_and_schema():
     assert set(REGISTRY) == {"results", "lap_times", "telemetry", "tyre_strategy", "best_laps",
-                           "positions", "race_pace", "track_map", "weather"}
+                           "positions", "race_pace", "track_map", "weather", "gap_to_leader", "tyre_degradation",
+                           "race_control"}
     assert "drivers" in create("lap_times").model_json_schema()["properties"]
 
 
@@ -70,7 +73,7 @@ def test_render_pide_clima(monkeypatch):
     seen = {}
     monkeypatch.setattr(registry, "load_session", lambda *a, **kw: seen.update(kw) or _data())
     registry.render(create("weather"), 2021, "X GP", "R")
-    assert seen == {"telemetry": False, "weather": True}
+    assert seen == {"telemetry": False, "weather": True, "messages": False}
 
 
 def test_track_map_salta_piloto_sin_posicion(monkeypatch):
@@ -111,3 +114,19 @@ def test_for_session():
     assert "positions" in for_session("R") and "positions" in for_session("S")
     assert "positions" not in for_session("Q") and "positions" not in for_session("FP1")
     assert "lap_times" in for_session("Q")
+
+
+def test_segunda_ola():
+    import dataclasses
+
+    import pytest
+
+    from f1_dash.data.sessions import SessionNotAvailable
+
+    d = _data()
+    gap = create("gap_to_leader", {"max_gap": 5}).figure(d)  # AAA lidera (90, 181); BBB va +1 y +2
+    assert [list(t.y) for t in gap.data] == [[0.0, 0.0], [1.0, 2.0]]
+    assert len(create("tyre_degradation").figure(d).data) == 3  # SOFT, MEDIUM, HARD
+    assert len(create("race_control", {"categories": ["Drs"]}).figure(d).data[0].cells.values[0]) == 1
+    with pytest.raises(SessionNotAvailable):
+        create("race_control").figure(dataclasses.replace(d, messages=None))

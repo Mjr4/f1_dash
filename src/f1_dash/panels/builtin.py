@@ -194,3 +194,54 @@ class Weather(Panel):
         for ch in self.channels:  # humedad y viento van en el eje derecho: otra escala
             fig.add_scatter(x=x, y=w[ch], name=ch, mode="lines", yaxis="y2" if ch in ("Humidity", "WindSpeed") else "y")
         return fig.update_layout(xaxis_title="Minutos de sesión", yaxis2={"overlaying": "y", "side": "right"})
+
+
+@register
+class GapToLeader(Panel):
+    id = "gap_to_leader"
+    title = "Gap al líder"
+    sessions = frozenset({"R", "S"})
+    drivers: list[str] = Field([], description='Códigos de piloto, ej. ["VER", "HAM"]. Vacío = todos.')
+    max_gap: float = Field(120, description="Segundos máximos a mostrar; recorta a los doblados para que no aplasten el gráfico.")
+
+    def figure(self, data: SessionData) -> go.Figure:
+        laps = data.laps.dropna(subset=["Time"])
+        gap = (laps["Time"] - laps.groupby("LapNumber")["Time"].transform("min")).dt.total_seconds()
+        laps = filter_laps(laps.assign(Gap=gap.where(gap <= self.max_gap)), self.drivers or None)
+        fig = go.Figure()
+        for drv, g in laps.groupby("Driver"):
+            fig.add_scatter(x=g["LapNumber"], y=g["Gap"], name=drv, mode="lines", line=driver_style(data, drv))
+        return fig.update_layout(xaxis_title="Vuelta", yaxis={"title": "Gap al líder (s)", "autorange": "reversed"})
+
+
+@register
+class TyreDegradation(Panel):
+    id = "tyre_degradation"
+    title = "Degradación de neumáticos (sin corregir por combustible)"
+    drivers: list[str] = Field([], description='Códigos de piloto, ej. ["VER", "HAM"]. Vacío = todos.')
+
+    def figure(self, data: SessionData) -> go.Figure:
+        laps = filter_laps(valid_laps(data.laps), self.drivers or None).dropna(subset=["TyreLife", "Compound"])
+        fig = go.Figure()
+        for comp, g in laps.groupby("Compound"):
+            fig.add_scatter(x=g["TyreLife"], y=g["LapTime"].dt.total_seconds(), name=comp, mode="markers",
+                            marker={"color": COMPOUND_COLORS.get(comp, "#888")}, text=g["Driver"])
+        return fig.update_layout(xaxis_title="Edad del neumático (vueltas)", yaxis_title="Tiempo (s)")
+
+
+@register
+class RaceControl(Panel):
+    id = "race_control"
+    title = "Mensajes de dirección de carrera"
+    needs_messages = True
+    categories: list[Literal["Flag", "Drs", "CarEvent", "Other"]] = Field(
+        ["Flag", "CarEvent"], description='Categorías a mostrar: "Flag", "Drs", "CarEvent", "Other".')
+    limit: int = Field(30, description="Máximo de mensajes a mostrar (los primeros).")
+
+    def figure(self, data: SessionData) -> go.Figure:
+        m = data.messages
+        if m is None or m.empty:
+            raise SessionNotAvailable("Esta sesión no tiene mensajes de dirección de carrera.")
+        cols = ["Lap", "Category", "Flag", "Message"]  # `Time` es fecha y hora de reloj: se muestra la vuelta
+        m = m[m["Category"].isin(self.categories)].head(self.limit)
+        return go.Figure(go.Table(header={"values": cols}, cells={"values": [m[c].fillna("").astype(str).tolist() for c in cols]}))
