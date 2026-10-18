@@ -77,6 +77,31 @@ def cached_figure(panel_id: str, params_json: str, year: int, event: str, sessio
     return fig.update_layout(height=300 + 80 * len(list(fig.select_yaxes())), margin=dict(l=10, r=10, t=30, b=10))
 
 
+def control(label: str, prop: dict, value, key: str):
+    """Un widget por campo del JSON Schema del panel; devuelve el valor elegido.
+
+    `X | None` = widget de X + casilla "automático" (None). Tipos no previstos caen al JSON avanzado.
+    """
+    help = prop.get("description")
+    if "anyOf" in prop:  # opcional: [X, null]
+        if st.checkbox(f"{label}: automático", value is None, key=f"{key}-auto", help=help):
+            return None
+        prop = next(p for p in prop["anyOf"] if p["type"] != "null")
+        value = {"integer": 1, "string": ""}[prop["type"]] if value is None else value
+    match prop["type"]:
+        case "boolean":
+            return st.checkbox(label, value, key=key, help=help)
+        case "integer":
+            return int(st.number_input(label, value=value, step=1, key=key, help=help))
+        case "number":
+            return st.number_input(label, value=float(value), key=key, help=help)
+        case "string":
+            return st.text_input(label, value, key=key, help=help)
+        case "array":
+            enum = prop["items"].get("enum")  # sin enum (pilotos): se escriben y se confirman con Enter
+            return st.multiselect(label, enum or value, value, accept_new_options=not enum, key=key, help=help)
+
+
 def draw(i: int, item):
     panel = item.panel()
     with st.container(border=True):
@@ -89,13 +114,22 @@ def draw(i: int, item):
         up.button("↑", key=f"up{i}", help="Mover atrás", on_click=attempt, args=(layout.move, i, max(i - 1, 0)), disabled=i == 0)
         down.button("↓", key=f"dn{i}", help="Mover adelante", on_click=attempt, args=(layout.move, i, i + 1), disabled=i == len(layout.panels) - 1)
         rm.button("✕", key=f"rm{i}", on_click=attempt, args=(layout.remove, i))
-        if REGISTRY[item.panel_id].model_fields:
+        if schema := REGISTRY[item.panel_id].model_json_schema().get("properties"):
             with st.expander("Parámetros"):
-                for name, f in REGISTRY[item.panel_id].model_fields.items():
-                    st.caption(f"`{name}` (defecto: `{json.dumps(f.default)}`): {f.description}")
-                key = f"params{i}-{item.panel_id}-{json.dumps(panel.model_dump(), sort_keys=True)}"
-                st.text_area("JSON", json.dumps(panel.model_dump(), indent=2), key=key, label_visibility="collapsed")
-                st.button("Aplicar", key=f"ap{i}", on_click=apply_params, args=(i, key))
+                current = panel.model_dump()
+                tag = f"{i}-{item.panel_id}-{json.dumps(current, sort_keys=True)}"  # al cambiar el valor, el widget se recrea con el nuevo
+                values = {n: control(n, p, current[n], f"{n}-{tag}") for n, p in schema.items()}
+                if values != current:
+                    try:
+                        layout.configure(i, values)
+                    except Exception as e:
+                        st.error(str(e))
+                    else:
+                        st.rerun()
+                with st.expander("JSON (avanzado)"):
+                    key = f"params{tag}"
+                    st.text_area("JSON", json.dumps(current, indent=2), key=key, label_visibility="collapsed")
+                    st.button("Aplicar", key=f"ap{i}", on_click=apply_params, args=(i, key))
         try:
             fig = cached_figure(item.panel_id, json.dumps(panel.model_dump(), sort_keys=True), year, event, session_type)
         except DataError as e:

@@ -145,3 +145,39 @@ def test_evento_sin_sesiones_disputadas(monkeypatch):
     assert not at.exception
     assert any("aún no tiene sesiones" in i.value for i in at.info)
     assert not at.get("plotly_chart")
+
+
+def test_controles_equivalen_al_json():
+    """Cambiar un parámetro con su control da el mismo panel que aplicar el JSON equivalente."""
+    from f1_dash.panels import create
+
+    at = AppTest.from_file("../src/f1_dash/ui/app.py", default_timeout=120).run()
+    at.sidebar.selectbox[0].select(2021)
+    at.run()
+    at.sidebar.selectbox[1].select("French Grand Prix")
+    at.sidebar.selectbox[3].select("race_pace").run()
+    at.sidebar.button[0].click().run()
+    [c for c in at.checkbox if c.label == "by_compound"][0].uncheck().run()
+    assert not at.exception
+    assert at.session_state.layout.panels[0].panel() == create("race_pace", {"by_compound": False})
+    [w for w in at.multiselect if w.label == "drivers"][0].set_value(["AAA"]).run()
+    assert not at.exception
+    assert at.session_state.layout.panels[0].panel() == create("race_pace", {"by_compound": False, "drivers": ["AAA"]})
+
+
+def test_controles_numerico_y_opcional():
+    from f1_dash.panels import create
+
+    at = AppTest.from_file("../src/f1_dash/ui/app.py", default_timeout=120).run()
+    at.sidebar.selectbox[0].select(2021)
+    at.run()
+    at.sidebar.selectbox[1].select("French Grand Prix")
+    for pid in ("best_laps", "telemetry"):
+        at.sidebar.selectbox[3].select(pid).run()
+        at.sidebar.button[0].click().run()
+    [n for n in at.number_input if n.label == "top"][0].set_value(5).run()
+    [c for c in at.checkbox if c.label == "lap: automático"][0].uncheck().run()  # None -> 1
+    [n for n in at.number_input if n.label == "lap"][0].set_value(3).run()
+    assert not at.exception
+    panels = [p.panel() for p in at.session_state.layout.panels]
+    assert panels == [create("best_laps", {"top": 5}), create("telemetry", {"lap": 3})]
