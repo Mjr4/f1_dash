@@ -88,3 +88,18 @@ def test_track_map_salta_piloto_sin_posicion(monkeypatch):
     import pytest
     with pytest.raises(SessionNotAvailable):  # piloto explícito: no se sustituye en silencio
         create("track_map", {"driver": "AAA"}).figure(_data())
+
+
+def test_figura_vacia_avisa(monkeypatch):
+    import dataclasses
+
+    import pytest
+
+    from f1_dash.data.sessions import SessionNotAvailable
+    from f1_dash.panels import registry
+
+    d = _data()
+    monkeypatch.setattr(registry, "load_session", lambda *a, **kw: dataclasses.replace(d, laps=d.laps.iloc[0:0]))
+    for pid in ("lap_times", "tyre_strategy", "best_laps", "race_pace"):
+        with pytest.raises(SessionNotAvailable):
+            registry.render(create(pid), 2021, "X GP", "R")

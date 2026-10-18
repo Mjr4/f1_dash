@@ -108,6 +108,8 @@ class BestLaps(Panel):
 
     def figure(self, data: SessionData) -> go.Figure:
         best = data.laps.dropna(subset=["LapTime"]).groupby("Driver")["LapTime"].min().nsmallest(self.top)
+        if best.empty:
+            raise SessionNotAvailable("Sin vueltas con tiempo en esta sesión.")
         secs = best.dt.total_seconds()
         fig = go.Figure(go.Bar(y=best.index, x=secs - secs.min(), orientation="h",
                                text=[_fmt(t) for t in best]))
