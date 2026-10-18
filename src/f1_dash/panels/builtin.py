@@ -121,6 +121,7 @@ class BestLaps(Panel):
 class Positions(Panel):
     id = "positions"
     title = "Posiciones por vuelta"
+    sessions = frozenset({"R", "S"})  # Q y prácticas no traen Position
     drivers: list[str] = Field([], description='Códigos de piloto, ej. ["VER", "HAM"]. Vacío = todos.')
 
     def figure(self, data: SessionData) -> go.Figure:

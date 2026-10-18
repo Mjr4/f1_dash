@@ -7,7 +7,7 @@ import streamlit as st
 from f1_dash.data.schedule import events, seasons, session_is_recent
 from f1_dash.data.sessions import DataError, TransientError
 from f1_dash.layout import Layout
-from f1_dash.panels import REGISTRY, create, render
+from f1_dash.panels import REGISTRY, create, for_session, render
 
 SESSION_TYPES = ["FP1", "FP2", "FP3", "SQ", "S", "Q", "R"]
 
@@ -36,7 +36,7 @@ with st.sidebar:
     session_type = st.selectbox("Sesión", SESSION_TYPES, index=SESSION_TYPES.index("R"))
 
     st.divider()
-    panel_id = st.selectbox("Panel", list(REGISTRY), format_func=lambda p: REGISTRY[p].title)
+    panel_id = st.selectbox("Panel", for_session(session_type), format_func=lambda p: REGISTRY[p].title)
     st.button("Agregar panel", on_click=attempt, args=(layout.add, panel_id), width='stretch')
 
     st.divider()

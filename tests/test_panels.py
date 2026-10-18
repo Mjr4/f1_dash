@@ -103,3 +103,11 @@ def test_figura_vacia_avisa(monkeypatch):
     for pid in ("lap_times", "tyre_strategy", "best_laps", "race_pace"):
         with pytest.raises(SessionNotAvailable):
             registry.render(create(pid), 2021, "X GP", "R")
+
+
+def test_for_session():
+    from f1_dash.panels import for_session
+
+    assert "positions" in for_session("R") and "positions" in for_session("S")
+    assert "positions" not in for_session("Q") and "positions" not in for_session("FP1")
+    assert "lap_times" in for_session("Q")

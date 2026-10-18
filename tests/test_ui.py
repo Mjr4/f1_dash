@@ -126,3 +126,12 @@ def test_aviso_sesion_reciente(monkeypatch):
     at.run()
     assert not at.exception
     assert any("muy reciente" in i.value for i in at.info)
+
+
+def test_catalogo_filtra_por_sesion():
+    at = AppTest.from_file("../src/f1_dash/ui/app.py", default_timeout=120).run()
+    assert "Posiciones por vuelta" in at.sidebar.selectbox[3].options
+    at.sidebar.selectbox[2].select("Q").run()
+    assert not at.exception
+    assert "Posiciones por vuelta" not in at.sidebar.selectbox[3].options
+    assert "Tiempos por vuelta" in at.sidebar.selectbox[3].options

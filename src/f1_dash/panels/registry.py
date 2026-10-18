@@ -14,6 +14,7 @@ class Panel(BaseModel):
     title: ClassVar[str]
     needs_telemetry: ClassVar[bool] = False
     needs_weather: ClassVar[bool] = False
+    sessions: ClassVar[frozenset[str] | None] = None  # tipos de sesión donde tiene sentido; None = todas
 
     def figure(self, data: SessionData) -> go.Figure:
         raise NotImplementedError
@@ -25,6 +26,11 @@ REGISTRY: dict[str, type[Panel]] = {}
 def register(cls: type[Panel]) -> type[Panel]:
     REGISTRY[cls.id] = cls
     return cls
+
+
+def for_session(session_type: str) -> list[str]:
+    """Ids de los paneles que tienen sentido en este tipo de sesión (para el catálogo de la UI)."""
+    return [i for i, c in REGISTRY.items() if c.sessions is None or session_type in c.sessions]
 
 
 def create(panel_id: str, params: dict | None = None) -> Panel:
