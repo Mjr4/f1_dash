@@ -8,12 +8,19 @@ import fastf1
 import fastf1.plotting
 from fastf1.exceptions import DataNotLoadedError
 import pandas as pd
+import requests
 
 from .cache import enable_cache
 
 
 class DataError(Exception):
-    """Base de los errores de la capa de datos."""
+    """Base de los errores de la capa de datos.
+
+    `transient` distingue un fallo transitorio (red, descarga: no debe cachearse)
+    de un error determinista ("la fuente no tiene datos", cacheable).
+    """
+
+    transient: bool = False
 
 
 class EventNotFound(DataError):
@@ -21,7 +28,15 @@ class EventNotFound(DataError):
 
 
 class SessionNotAvailable(DataError):
-    pass
+    """La fuente no tiene datos para esta sesión (determinista, cacheable)."""
+
+    transient = False
+
+
+class TransientError(DataError):
+    """Fallo transitorio al descargar (red, sesión no publicada aún): no debe cachearse."""
+
+    transient = True
 
 
 @dataclass(frozen=True)
@@ -92,6 +107,8 @@ def _resolve(year, event, session_type):
 def _load(s, year, session_type, telemetry, weather, messages) -> SessionData:
     try:
         s.load(laps=True, telemetry=telemetry, weather=weather, messages=messages)
+    except (requests.RequestException, ConnectionError, TimeoutError) as e:  # red caída: transitorio, no debe cachearse
+        raise TransientError(f"{year} {s.event['EventName']} {session_type}: {e}") from e
     except Exception as e:  # FastF1 lanza tipos variados si la sesión no tiene datos
         raise SessionNotAvailable(f"{year} {s.event['EventName']} {session_type}: {e}") from e
     try:

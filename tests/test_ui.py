@@ -56,3 +56,37 @@ def test_panel_fallido_no_se_reejecuta(monkeypatch):
     assert not at.exception
     assert [w.value for w in at.warning] == ["sin posiciones"]
     assert calls.count("positions") == 1  # reruns posteriores usan el aviso cacheado
+
+
+def test_error_transitorio_no_se_cachea(monkeypatch):
+    """Un fallo de red (TransientError) no se cachea: el segundo render reintenta y muestra la figura."""
+    import f1_dash.panels as panels
+    from f1_dash.data.sessions import TransientError
+
+    calls = []
+    real = panels.render
+
+    def render(panel, *a):
+        n = calls.count(panel.id)
+        calls.append(panel.id)
+        if panel.id == "results" and n == 0:  # primer render: fallo de red
+            raise TransientError("fallo de red al descargar")
+        return real(panel, *a)
+
+    monkeypatch.setattr(panels, "render", render)
+    at = AppTest.from_file("../src/f1_dash/ui/app.py", default_timeout=120).run()
+    at.sidebar.selectbox[0].select(2021)
+    at.run()
+    at.sidebar.selectbox[1].select("French Grand Prix")
+    at.sidebar.selectbox[3].select("results").run()
+    at.sidebar.button[0].click().run()  # 1er render: TransientError -> st.error, no cacheado
+    assert not at.exception
+    assert calls.count("results") == 1
+    assert [e.value for e in at.error] == ["fallo de red al descargar"]
+    assert not at.get("plotly_chart")
+    # 2do render (rerun): se reintenta y ahora tiene éxito
+    at.run()
+    assert calls.count("results") == 2
+    assert not at.exception
+    assert not at.error
+    assert len(at.get("plotly_chart")) == 1

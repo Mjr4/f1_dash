@@ -117,3 +117,25 @@ def test_telemetry_sesion_sin_telemetria():
     data = SimpleNamespace(year=2026, event="X", session_type="R", _raw=SimpleNamespace(car_data={}))
     with pytest.raises(SessionNotAvailable, match="no tiene telemetría"):
         telemetry(data, "VER")
+
+
+def test_load_clasifica_errores_de_carga():
+    import pytest
+    import requests
+
+    from f1_dash.data import sessions
+    from f1_dash.data.sessions import SessionNotAvailable, TransientError
+
+    def fallar(exc):
+        class S:
+            event = {"EventName": "X"}
+            def load(self, **kw): raise exc
+        return S()
+
+    with pytest.raises(TransientError):
+        sessions._load(fallar(requests.ConnectionError("sin red")), 2021, "R", False, False, False)
+    with pytest.raises(TransientError):
+        sessions._load(fallar(TimeoutError()), 2021, "R", False, False, False)
+    with pytest.raises(SessionNotAvailable) as ei:  # la fuente no tiene datos: determinista, se cachea
+        sessions._load(fallar(ValueError("sin datos")), 2021, "R", False, False, False)
+    assert not isinstance(ei.value, TransientError)

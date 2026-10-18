@@ -4,7 +4,7 @@ import json
 import streamlit as st
 
 from f1_dash.data.schedule import events, seasons
-from f1_dash.data.sessions import DataError
+from f1_dash.data.sessions import DataError, TransientError
 from f1_dash.layout import Layout
 from f1_dash.panels import REGISTRY, create, render
 
@@ -55,10 +55,17 @@ if not layout.panels:
 
 @st.cache_data(max_entries=64, ttl=3600, show_spinner="Cargando datos...")
 def cached_figure(panel_id: str, params_json: str, year: int, event: str, session_type: str):
-    """Figura (o texto del DataError) cacheada por panel+params+sesión; así un panel fallido no se re-ejecuta en cada rerun."""
+    """Figura (o texto del DataError) cacheada por panel+params+sesión; así un panel fallido no se re-ejecuta en cada rerun.
+
+    Los errores deterministas (`transient=False`) se devuelven como texto y se cachean.
+    Los transitorios (`transient=True`, ej. fallo de red) se relanzan: `st.cache_data`
+    no cachea excepciones, así que el siguiente rerun vuelve a intentar la descarga.
+    """
     try:
         fig = render(create(panel_id, json.loads(params_json)), year, event, session_type)
     except DataError as e:
+        if getattr(e, "transient", False):
+            raise
         return str(e)
     return fig.update_layout(height=300 + 80 * len(list(fig.select_yaxes())), margin=dict(l=10, r=10, t=30, b=10))
 
@@ -82,10 +89,17 @@ def draw(i: int, item):
                 key = f"params{i}-{item.panel_id}-{json.dumps(panel.model_dump(), sort_keys=True)}"
                 st.text_area("JSON", json.dumps(panel.model_dump(), indent=2), key=key, label_visibility="collapsed")
                 st.button("Aplicar", key=f"ap{i}", on_click=apply_params, args=(i, key))
-        fig = cached_figure(item.panel_id, json.dumps(panel.model_dump(), sort_keys=True), year, event, session_type)
+        try:
+            fig = cached_figure(item.panel_id, json.dumps(panel.model_dump(), sort_keys=True), year, event, session_type)
+        except DataError as e:
+            if getattr(e, "transient", False):
+                st.error(str(e))
+            else:
+                st.warning(str(e))
+            fig = None
         if isinstance(fig, str):
             st.warning(fig)
-        else:
+        elif fig is not None:
             st.plotly_chart(fig, key=f"fig{i}", width='stretch')
 
 
