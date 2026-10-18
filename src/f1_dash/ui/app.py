@@ -4,12 +4,10 @@ import logging
 
 import streamlit as st
 
-from f1_dash.data.schedule import events, seasons, session_is_recent
+from f1_dash.data.schedule import events, seasons, session_is_recent, sessions_held
 from f1_dash.data.sessions import DataError, TransientError
 from f1_dash.layout import Layout
 from f1_dash.panels import REGISTRY, create, for_session, render
-
-SESSION_TYPES = ["FP1", "FP2", "FP3", "SQ", "S", "Q", "R"]
 
 st.set_page_config(page_title="F1 Dash", layout="wide")
 if "layout" not in st.session_state:
@@ -33,7 +31,8 @@ with st.sidebar:
     st.title("F1 Dash")
     year = st.selectbox("Temporada", seasons())
     event = st.selectbox("Evento", events(year)["EventName"])
-    session_type = st.selectbox("Sesión", SESSION_TYPES, index=SESSION_TYPES.index("R"))
+    held = sessions_held(year, event)
+    session_type = st.selectbox("Sesión", held, index=held.index("R") if "R" in held else 0)
 
     st.divider()
     panel_id = st.selectbox("Panel", for_session(session_type), format_func=lambda p: REGISTRY[p].title)
@@ -47,6 +46,10 @@ with st.sidebar:
         st.session_state.layout = Layout.loads(upload.getvalue())
 
     st.button("Cargar", on_click=attempt, args=(load,), disabled=upload is None, width='stretch')
+
+if session_type is None:
+    st.info("Este evento aún no tiene sesiones disputadas.")
+    st.stop()
 
 if err := st.session_state.pop("error", None):
     st.error(err)

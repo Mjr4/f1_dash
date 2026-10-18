@@ -159,3 +159,19 @@ def test_session_is_recent(monkeypatch):
 
     monkeypatch.setattr(schedule.fastf1, "get_event", sin_red)
     assert schedule.session_is_recent(2026, "X", "R") is False
+
+
+def test_sessions_held(monkeypatch):
+    import pandas as pd
+
+    from f1_dash.data import schedule
+
+    ahora = pd.Timestamp.now("UTC").tz_localize(None)
+    h = pd.Timedelta(hours=1)
+    ev = {"Session1": "Practice 1", "Session1DateUtc": ahora - 48 * h, "Session2": "Sprint Shootout", "Session2DateUtc": ahora - 24 * h,
+          "Session3": "Sprint", "Session3DateUtc": ahora - h, "Session4": "Qualifying", "Session4DateUtc": ahora + h,
+          "Session5": "Race", "Session5DateUtc": ahora + 24 * h}
+    monkeypatch.setattr(schedule.fastf1, "get_event", lambda y, e: ev)
+    assert schedule.sessions_held(2023, "X") == ["FP1", "SQ", "S"]  # Q y R no han empezado
+    monkeypatch.setattr(schedule.fastf1, "get_event", lambda y, e: (_ for _ in ()).throw(OSError))
+    assert schedule.sessions_held(2023, "X") == schedule.SESSION_TYPES  # sin calendario: no bloquea

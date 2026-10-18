@@ -135,3 +135,13 @@ def test_catalogo_filtra_por_sesion():
     assert not at.exception
     assert "Posiciones por vuelta" not in at.sidebar.selectbox[3].options
     assert "Tiempos por vuelta" in at.sidebar.selectbox[3].options
+
+
+def test_evento_sin_sesiones_disputadas(monkeypatch):
+    import f1_dash.data.schedule as schedule
+
+    monkeypatch.setattr(schedule, "sessions_held", lambda *a: [])
+    at = AppTest.from_file("../src/f1_dash/ui/app.py", default_timeout=120).run()
+    assert not at.exception
+    assert any("aún no tiene sesiones" in i.value for i in at.info)
+    assert not at.get("plotly_chart")
