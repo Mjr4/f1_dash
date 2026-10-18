@@ -1,5 +1,6 @@
 """UI Streamlit: solo renderiza. Toda la lógica vive en data/sampling/panels/layout."""
 import json
+import logging
 
 import streamlit as st
 
@@ -96,6 +97,10 @@ def draw(i: int, item):
                 st.error(str(e))
             else:
                 st.warning(str(e))
+            fig = None
+        except Exception as e:  # bug del panel o error raro de FastF1: que no tumbe el resto de la página
+            logging.getLogger(__name__).exception("panel %s falló", item.panel_id)
+            st.error(f"{type(e).__name__}: {e}")
             fig = None
         if isinstance(fig, str):
             st.warning(fig)

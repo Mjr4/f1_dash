@@ -90,3 +90,28 @@ def test_error_transitorio_no_se_cachea(monkeypatch):
     assert not at.exception
     assert not at.error
     assert len(at.get("plotly_chart")) == 1
+
+
+def test_excepcion_inesperada_no_rompe_la_pagina(monkeypatch):
+    """Un panel que lanza RuntimeError muestra un error y los demás se dibujan."""
+    import f1_dash.panels as panels
+
+    real = panels.render
+
+    def render(panel, *a):
+        if panel.id == "results":
+            raise RuntimeError("boom")
+        return real(panel, *a)
+
+    monkeypatch.setattr(panels, "render", render)
+    at = AppTest.from_file("../src/f1_dash/ui/app.py", default_timeout=120).run()
+    at.sidebar.selectbox[0].select(2021)
+    at.run()
+    at.sidebar.selectbox[1].select("French Grand Prix")
+    at.sidebar.selectbox[3].select("results").run()
+    at.sidebar.button[0].click().run()
+    at.sidebar.selectbox[3].select("lap_times").run()
+    at.sidebar.button[0].click().run()
+    assert not at.exception
+    assert [e.value for e in at.error] == ["RuntimeError: boom"]
+    assert len(at.get("plotly_chart")) == 1
