@@ -68,4 +68,4 @@ tests/
 
 ## Estado
 
-CI en GitHub Actions (`.github/workflows/ci.yml`): pytest y la regla de aislamiento de la UI en cada push a `main` y en cada PR. Fase 0 hecha (`pyproject.toml`, `.gitignore`, esqueleto de paquetes, `data/cache.py`). Fase 1 hecha (`data/schedule.py`, `data/sessions.py`, `scripts/phase1_check.py`). Fase 2 hecha (`sampling/laps.py`, `sampling/telemetry.py`). Fase 3 hecha (`panels/registry.py`, `panels/builtin.py`). Fase 4 hecha (`layout/model.py`). Fase 5 hecha (`ui/app.py`). Proyecto completo según el alcance inicial. Paneles adicionales hechos (posiciones, ritmo, mapa, clima, gap, degradación, mensajes).
+Fases 0 a 5 hechas (`data/`, `sampling/`, `panels/`, `layout/`, `ui/app.py`). Paneles: resultados, tiempos por vuelta, telemetría, estrategia de neumáticos, mejor vuelta, posiciones, ritmo de carrera, mapa del circuito, clima, gap al líder, degradación de neumáticos y mensajes de dirección de carrera. La UI solo ofrece las sesiones ya disputadas y los paneles que aplican a la sesión, genera un control por parámetro (con el JSON como modo avanzado), avisa de sesiones recientes y aísla los errores por panel. CI en GitHub Actions.

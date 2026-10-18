@@ -4,3 +4,4 @@ __pycache__/
 .pytest_cache/
 .fastf1_cache/
 layouts/
+.claude/worktrees/
