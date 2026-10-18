@@ -115,3 +115,14 @@ def test_excepcion_inesperada_no_rompe_la_pagina(monkeypatch):
     assert not at.exception
     assert [e.value for e in at.error] == ["RuntimeError: boom"]
     assert len(at.get("plotly_chart")) == 1
+
+
+def test_aviso_sesion_reciente(monkeypatch):
+    import f1_dash.data.schedule as schedule
+
+    monkeypatch.setattr(schedule, "session_is_recent", lambda *a: True)
+    at = AppTest.from_file("../src/f1_dash/ui/app.py", default_timeout=120).run()
+    at.sidebar.selectbox[0].select(2021)
+    at.run()
+    assert not at.exception
+    assert any("muy reciente" in i.value for i in at.info)

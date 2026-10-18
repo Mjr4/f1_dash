@@ -4,7 +4,7 @@ import logging
 
 import streamlit as st
 
-from f1_dash.data.schedule import events, seasons
+from f1_dash.data.schedule import events, seasons, session_is_recent
 from f1_dash.data.sessions import DataError, TransientError
 from f1_dash.layout import Layout
 from f1_dash.panels import REGISTRY, create, render
@@ -50,6 +50,9 @@ with st.sidebar:
 
 if err := st.session_state.pop("error", None):
     st.error(err)
+
+if session_is_recent(year, event, session_type):
+    st.info("Esta sesión es muy reciente: sus datos pueden estar incompletos y FastF1 podría guardarlos así en el caché de disco.")
 
 if not layout.panels:
     st.info("Agrega paneles desde la barra lateral.")

@@ -139,3 +139,23 @@ def test_load_clasifica_errores_de_carga():
     with pytest.raises(SessionNotAvailable) as ei:  # la fuente no tiene datos: determinista, se cachea
         sessions._load(fallar(ValueError("sin datos")), 2021, "R", False, False, False)
     assert not isinstance(ei.value, TransientError)
+
+
+def test_session_is_recent(monkeypatch):
+    from types import SimpleNamespace
+
+    import pandas as pd
+
+    from f1_dash.data import schedule
+
+    ahora = pd.Timestamp.now("UTC").tz_localize(None)
+    for delta, esperado in ((pd.Timedelta(hours=-2), True), (pd.Timedelta(days=-3), False), (pd.Timedelta(days=1), True)):
+        ev = SimpleNamespace(get_session_date=lambda t, utc: ahora + delta)
+        monkeypatch.setattr(schedule.fastf1, "get_event", lambda y, e, ev=ev: ev)
+        assert schedule.session_is_recent(2026, "X", "R") is esperado
+
+    def sin_red(y, e):
+        raise OSError
+
+    monkeypatch.setattr(schedule.fastf1, "get_event", sin_red)
+    assert schedule.session_is_recent(2026, "X", "R") is False

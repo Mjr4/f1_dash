@@ -40,6 +40,7 @@ def offline(monkeypatch):
     monkeypatch.setattr(sessions, "enable_cache", lambda: None)
     monkeypatch.setattr(schedule.fastf1, "get_event_schedule", lambda year, include_testing=True: pd.DataFrame(
         {c: [EVENT] for c in schedule.COLUMNS}))
+    monkeypatch.setattr(schedule.fastf1, "get_event", lambda *a: (_ for _ in ()).throw(OSError))  # sin aviso de sesión reciente
     schedule.events.cache_clear()
     sessions._CACHE.clear()
     import streamlit as st
