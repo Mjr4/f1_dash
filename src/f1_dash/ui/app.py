@@ -1,7 +1,10 @@
 """UI Streamlit: solo renderiza. Toda la lógica vive en data/sampling/panels/layout."""
 import json
 import logging
+import os
+import threading
 
+import requests
 import streamlit as st
 
 from f1_dash.data.schedule import events, seasons, session_is_recent, sessions_held
@@ -77,6 +80,22 @@ def cached_figure(panel_id: str, params_json: str, year: int, event: str, sessio
     return fig.update_layout(height=300 + 80 * len(list(fig.select_yaxes())), margin=dict(l=10, r=10, t=30, b=10))
 
 
+@st.cache_resource
+def _alertados() -> set:
+    return set()  # compartido por todas las sesiones del servidor; sobrevive a los reruns del script
+
+
+def alertar(panel_id: str, year: int, event: str, session_type: str, e: Exception):
+    """Avisa por webhook (F1_DASH_ALERT_WEBHOOK: Discord o Slack) una vez por panel+sesión+tipo de error."""
+    url = os.environ.get("F1_DASH_ALERT_WEBHOOK")
+    clave = (panel_id, year, event, session_type, type(e).__name__)
+    if not url or clave in _alertados():
+        return
+    _alertados().add(clave)
+    msg = f"F1 Dash: el panel {panel_id} falló en {year} {event} {session_type}: {type(e).__name__}: {e}"
+    threading.Thread(target=lambda: requests.post(url, json={"content": msg, "text": msg}, timeout=5), daemon=True).start()
+
+
 def control(label: str, prop: dict, value, key: str):
     """Un widget por campo del JSON Schema del panel; devuelve el valor elegido.
 
@@ -140,6 +159,7 @@ def draw(i: int, item):
             fig = None
         except Exception as e:  # bug del panel o error raro de FastF1: que no tumbe el resto de la página
             logging.getLogger(__name__).exception("panel %s falló", item.panel_id)
+            alertar(item.panel_id, year, event, session_type, e)
             st.error(f"{type(e).__name__}: {e}")
             fig = None
         if isinstance(fig, str):

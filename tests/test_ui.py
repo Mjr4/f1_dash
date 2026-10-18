@@ -181,3 +181,27 @@ def test_controles_numerico_y_opcional():
     assert not at.exception
     panels = [p.panel() for p in at.session_state.layout.panels]
     assert panels == [create("best_laps", {"top": 5}), create("telemetry", {"lap": 3})]
+
+
+def test_alerta_una_vez_por_error(monkeypatch):
+    """Una excepción inesperada avisa por webhook; los reruns del mismo fallo no repiten el aviso."""
+    import requests
+
+    import f1_dash.panels as panels
+
+    posts = []
+    monkeypatch.setenv("F1_DASH_ALERT_WEBHOOK", "http://alertas.test")
+    monkeypatch.setattr(requests, "post", lambda url, **kw: posts.append((url, kw["json"]["content"])))
+    monkeypatch.setattr(panels, "render", lambda *a: (_ for _ in ()).throw(RuntimeError("boom")))
+    at = AppTest.from_file("../src/f1_dash/ui/app.py", default_timeout=120).run()
+    at.sidebar.selectbox[0].select(2021)
+    at.run()
+    at.sidebar.selectbox[1].select("French Grand Prix")
+    at.sidebar.selectbox[3].select("results").run()
+    at.sidebar.button[0].click().run()
+    at.run()
+    at.run()
+    import time
+    time.sleep(0.2)  # el aviso va en un hilo
+    assert len(posts) == 1
+    assert posts[0][0] == "http://alertas.test" and "results" in posts[0][1] and "RuntimeError: boom" in posts[0][1]

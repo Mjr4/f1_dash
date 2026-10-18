@@ -57,6 +57,7 @@ tests/
 - Barra lateral: temporada -> evento -> sesión, y catálogo de paneles.
 - Área principal: renderiza el layout; el usuario agrega, quita y ordena paneles.
 - Descargar/subir el layout como JSON (sin estado en el servidor: el disco de Streamlit Community Cloud es efímero y compartido).
+- Alertas: si `F1_DASH_ALERT_WEBHOOK` está definida (URL de webhook de Discord o Slack; en Streamlit Community Cloud, como secret), una excepción inesperada en un panel manda un aviso, una sola vez por panel, sesión y tipo de error. Los `SessionNotAvailable` no avisan.
 - Aviso de sesión reciente: si la sesión empezó hace menos de 24 h (`RECENT_HOURS` en `data/schedule.py`) la UI avisa que sus datos pueden estar incompletos. FastF1 publica resultados y telemetría horas después de la sesión, y si se cargan antes puede guardar datos parciales en el caché de disco (`.fastf1_cache`); si pasa, borra la carpeta de esa sesión dentro de ese caché.
 
 ## Verificación

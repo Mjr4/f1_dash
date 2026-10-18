@@ -8,6 +8,7 @@ dependencies = [
     "pandas",
     "plotly",
     "pydantic>=2",
+    "requests",
     "streamlit",
 ]
 
