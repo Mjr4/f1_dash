@@ -233,3 +233,13 @@ def test_sin_f1_dash_cache_no_hay_cache_de_disco(monkeypatch):
     monkeypatch.setattr(schedule, "CACHE_DIR", None)
     assert schedule._cached() == set()
 
+
+def test_mirror_no_intenta_iniciar_sesion(monkeypatch):
+    from fastf1.exceptions import F1AuthError
+    from fastf1.internals.f1account import token_manager
+
+    from f1_dash.data import cache
+    monkeypatch.setattr(token_manager, "_authenticate", token_manager._authenticate)  # se restaura al terminar el test
+    cache.disable_login()
+    with pytest.raises(F1AuthError):
+        token_manager.get(force_renew=True)  # sin esto pediría usuario y contraseña por terminal

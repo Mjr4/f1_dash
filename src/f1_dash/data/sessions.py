@@ -10,7 +10,8 @@ from fastf1.exceptions import DataNotLoadedError
 import pandas as pd
 import requests
 
-from .cache import enable_cache
+from .cache import disable_login, enable_cache
+from .schedule import mirror_only
 
 
 class DataError(Exception):
@@ -95,6 +96,8 @@ def load_session(
 
 def _resolve(year, event, session_type):
     enable_cache()
+    if mirror_only():
+        disable_login()
     try:
         s = fastf1.get_session(year, event, session_type)
     except ValueError as e:  # identificador de sesión inválido
