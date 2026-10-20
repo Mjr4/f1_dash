@@ -205,3 +205,12 @@ def test_alerta_una_vez_por_error(monkeypatch):
     time.sleep(0.2)  # el aviso va en un hilo
     assert len(posts) == 1
     assert posts[0][0] == "http://alertas.test" and "results" in posts[0][1] and "RuntimeError: boom" in posts[0][1]
+
+
+def test_app_cached_only_sin_cache_no_falla(tmp_path, monkeypatch):
+    from f1_dash.data import schedule
+    monkeypatch.setattr(schedule, "DEFAULT_CACHE_DIR", tmp_path)
+    monkeypatch.setenv("F1_DASH_CACHED_ONLY", "1")
+    at = AppTest.from_file("../src/f1_dash/ui/app.py", default_timeout=120).run()
+    assert not at.exception
+    assert "sesiones" in at.info[0].value

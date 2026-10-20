@@ -177,3 +177,49 @@ def test_sessions_held(monkeypatch):
     assert schedule.sessions_held(2023, "X") == ["FP1", "SQ", "S"]  # Q y R no han empezado
     monkeypatch.setattr(schedule.fastf1, "get_event", lambda y, e: (_ for _ in ()).throw(OSError))
     assert schedule.sessions_held(2023, "X") == schedule.SESSION_TYPES  # sin calendario: no bloquea
+
+
+def test_cached_only_filtra_a_lo_que_hay_en_cache(tmp_path, monkeypatch):
+    from f1_dash.data import schedule
+    race = tmp_path / "2026" / "2026-10-11_Singapore_Grand_Prix" / "2026-10-11_Race"
+    race.mkdir(parents=True)
+    (race / "laps.ff1pkl").write_bytes(b"x" * schedule.MIN_CACHED_BYTES)
+    (tmp_path / "2026" / "2026-10-11_Singapore_Grand_Prix" / "2026-10-10_Qualifying").mkdir()  # carga fallida: vacía
+    monkeypatch.setattr(schedule, "DEFAULT_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(schedule, "_held", lambda y, e: ["Q", "R"])
+    monkeypatch.setenv("F1_DASH_CACHED_ONLY", "1")
+    assert schedule.seasons() == [2026]
+    assert schedule.sessions_held(2026, "Singapore Grand Prix") == ["R"]
+    monkeypatch.delenv("F1_DASH_CACHED_ONLY")
+    assert schedule.sessions_held(2026, "Singapore Grand Prix") == ["Q", "R"]
+
+
+def test_mirror_only_limita_las_temporadas(monkeypatch):
+    from f1_dash.data import schedule
+    monkeypatch.setenv("F1_DASH_SOURCE", "mirror")
+    assert schedule.seasons() == [2022, 2021]
+    monkeypatch.delenv("F1_DASH_SOURCE")
+    assert schedule.seasons()[-1] == schedule.FIRST_SEASON
+
+
+def test_available_events_filtra_por_cache(tmp_path, monkeypatch):
+    import pandas as pd
+
+    from f1_dash.data import schedule
+    race = tmp_path / "2026" / "2026-10-11_Singapore_Grand_Prix" / "2026-10-11_Race"
+    race.mkdir(parents=True)
+    (race / "laps.ff1pkl").write_bytes(b"x" * schedule.MIN_CACHED_BYTES)
+    df = pd.DataFrame({"EventName": ["Singapore Grand Prix", "Italian Grand Prix"]})
+    monkeypatch.setattr(schedule, "DEFAULT_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(schedule, "events", lambda y: df)
+    assert len(schedule.available_events(2026)) == 2
+    monkeypatch.setenv("F1_DASH_CACHED_ONLY", "1")
+    assert schedule.available_events(2026)["EventName"].tolist() == ["Singapore Grand Prix"]
+
+
+def test_mirror_y_cached_only_juntos_es_error(monkeypatch):
+    from f1_dash.data import schedule
+    monkeypatch.setenv("F1_DASH_SOURCE", "mirror")
+    monkeypatch.setenv("F1_DASH_CACHED_ONLY", "1")
+    with pytest.raises(ValueError, match="F1_DASH_SOURCE"):
+        schedule.seasons()

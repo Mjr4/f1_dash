@@ -7,7 +7,7 @@ import threading
 import requests
 import streamlit as st
 
-from f1_dash.data.schedule import events, seasons, session_is_recent, sessions_held
+from f1_dash.data.schedule import available_events, cached_only, seasons, session_is_recent, sessions_held
 from f1_dash.data.sessions import DataError, TransientError
 from f1_dash.layout import Layout
 from f1_dash.panels import REGISTRY, create, for_session, render
@@ -32,8 +32,10 @@ def apply_params(i: int, key: str):
 
 with st.sidebar:
     st.title("F1 Dash")
+    if cached_only():
+        st.caption("La fuente de datos de la F1 ahora exige suscripción: solo hay disponibles las sesiones ya guardadas.")
     year = st.selectbox("Temporada", seasons())
-    event = st.selectbox("Evento", events(year)["EventName"])
+    event = st.selectbox("Evento", available_events(year)["EventName"] if year else [])
     held = sessions_held(year, event)
     session_type = st.selectbox("Sesión", held, index=held.index("R") if "R" in held else 0)
 
