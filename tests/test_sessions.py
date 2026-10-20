@@ -107,6 +107,8 @@ def test_datos_no_cargados_son_dataerror():
     assert sessions._load(SinClima(), 2021, "R", False, True, False).weather is None
     with pytest.raises(SessionNotAvailable):
         sessions._load(SinVueltas(), 2021, "R", False, False, False)
+    with pytest.raises(SessionNotAvailable, match="cuenta F1 TV"):
+        sessions._load(SinVueltas(), 2024, "R", False, False, False)
 
 
 def test_telemetry_sesion_sin_telemetria():

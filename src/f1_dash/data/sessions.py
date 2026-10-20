@@ -114,7 +114,8 @@ def _load(s, year, session_type, telemetry, weather, messages) -> SessionData:
     try:
         results, laps = pd.DataFrame(s.results), pd.DataFrame(s.laps)
     except DataNotLoadedError as e:  # load() registra el fallo en el log y sigue; el acceso lo revela
-        raise SessionNotAvailable(f"{year} {s.event['EventName']} {session_type}: {e}") from e
+        hint = " Desde oct-2026 las temporadas desde 2023 exigen cuenta F1 TV (F1_USERNAME/F1_PASSWORD) o un caché propio." if year >= 2023 else ""
+        raise SessionNotAvailable(f"{year} {s.event['EventName']} {session_type}: {e}{hint}") from e
     return SessionData(
         year=year,
         event=s.event["EventName"],
