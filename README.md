@@ -8,7 +8,7 @@ Dashboard personalizable de Fórmula 1 sobre [FastF1](https://docs.fastf1.dev/).
 
 Calendario, resultados, vueltas y telemetría (FastF1 cubre 2018 en adelante).
 
-Fuera de alcance por ahora: drag & drop libre, datos pre-2018 (Ergast), datos en vivo, autenticación/multiusuario.
+Fuera de alcance por ahora: drag & drop libre, datos pre-2018 (Ergast), datos en vivo, multiusuario. La cuenta F1 TV solo se usa como credencial del proceso (ver "Fuente de datos"), no hay login en la UI.
 
 ## Arquitectura
 
@@ -17,11 +17,25 @@ Cada capa solo depende de la anterior.
 ```
 src/f1_dash/
   data/       Fase 1  Obtención: wrappers de FastF1 + caché
+    cache.py      activa el caché de disco (F1_DASH_CACHE)
+    schedule.py   temporadas, eventos y sesiones disputadas; modos de fuente
+    sessions.py   load_session, caché en memoria, errores de datos
   sampling/   Fase 2  Muestreo: reducir/normalizar datos para visualizar
+    laps.py, telemetry.py
   panels/     Fase 3  Componentes: transforman datos -> figura Plotly
+    registry.py   clase base Panel, @register y render()
+    builtin.py    los paneles incluidos
   layout/     Fase 4  Modelo de dashboard: paneles, orden y config (JSON)
+    model.py
   ui/         Fase 5  Frontend (Streamlit): solo renderiza
-tests/
+    app.py
+tests/        pytest por capa, sin red (conftest.py reemplaza FastF1 por una sesión falsa)
+  test_sessions.py  data/ (sesiones, calendario, modos de fuente)
+  test_sampling.py, test_panels.py, test_layout.py
+  test_ui.py        la UI de punta a punta con streamlit.testing (AppTest)
+scripts/      phase1_check.py: verificación manual de la capa de datos contra la red
+.github/workflows/ci.yml   pytest + comprobación de aislamiento de Streamlit
+pyproject.toml            dependencias (fastf1 fijada a 3.9.0a0) y extra [dev]
 ```
 
 **Regla de migración:** `data`, `sampling`, `panels` y `layout` no importan Streamlit ni ninguna librería de UI. Migrar a FastAPI + frontend JS implica agregar una capa `api/` que exponga esas mismas funciones, sin reescribir la lógica.
@@ -71,6 +85,14 @@ Desde octubre de 2026 F1 exige una cuenta F1 TV (Access o superior) para el arch
 | **Caché propio** | `F1_DASH_CACHED_ONLY=1` y tu caché en `F1_DASH_CACHE` (por defecto `.fastf1_cache`) | Solo las sesiones que ya tengas en disco |
 
 El caché de FastF1 no se versiona (`.fastf1_cache/` está en `.gitignore`) ni se sube al servidor: cada quien trae el suyo.
+
+## Desarrollo
+
+```
+pip install -e .[dev]                     # dependencias + pytest
+pytest -q                                 # tests, sin red
+streamlit run src/f1_dash/ui/app.py       # la app
+```
 
 ## Verificación
 
