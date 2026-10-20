@@ -60,6 +60,18 @@ tests/
 - Alertas: si `F1_DASH_ALERT_WEBHOOK` está definida (URL de webhook de Discord o Slack; en Streamlit Community Cloud, como secret), una excepción inesperada en un panel manda un aviso, una sola vez por panel, sesión y tipo de error. Los `SessionNotAvailable` no avisan.
 - Aviso de sesión reciente: si la sesión empezó hace menos de 24 h (`RECENT_HOURS` en `data/schedule.py`) la UI avisa que sus datos pueden estar incompletos. FastF1 publica resultados y telemetría horas después de la sesión, y si se cargan antes puede guardar datos parciales en el caché de disco (`.fastf1_cache`); si pasa, borra la carpeta de esa sesión dentro de ese caché.
 
+## Fuente de datos
+
+Desde octubre de 2026 F1 exige una cuenta F1 TV (Access o superior) para el archivo de livetiming; el mirror de FastF1 solo conserva 2021 y 2022. Por eso hay tres caminos:
+
+| Camino | Cómo se activa | Datos |
+|---|---|---|
+| **Mirror** (servidor público) | `F1_DASH_SOURCE=mirror` | 2021–2022, sin credenciales |
+| **Cuenta F1 TV** (local) | `F1_USERNAME` y `F1_PASSWORD` en el entorno | Todas las temporadas; requiere `fastf1==3.9.0a0` (ya fijada en `pyproject.toml`) |
+| **Caché propio** | `F1_DASH_CACHED_ONLY=1` y tu caché en `F1_DASH_CACHE` (por defecto `.fastf1_cache`) | Solo las sesiones que ya tengas en disco |
+
+El caché de FastF1 no se versiona (`.fastf1_cache/` está en `.gitignore`) ni se sube al servidor: cada quien trae el suyo.
+
 ## Verificación
 
 - Tests con pytest por capa, con fixtures pequeños de una sesión real para no depender de la red.
