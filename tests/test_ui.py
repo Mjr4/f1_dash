@@ -209,7 +209,7 @@ def test_alerta_una_vez_por_error(monkeypatch):
 
 def test_app_cached_only_sin_cache_no_falla(tmp_path, monkeypatch):
     from f1_dash.data import schedule
-    monkeypatch.setattr(schedule, "DEFAULT_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(schedule, "CACHE_DIR", tmp_path)
     monkeypatch.setenv("F1_DASH_CACHED_ONLY", "1")
     at = AppTest.from_file("../src/f1_dash/ui/app.py", default_timeout=120).run()
     assert not at.exception

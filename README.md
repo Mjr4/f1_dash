@@ -17,7 +17,7 @@ Cada capa solo depende de la anterior.
 ```
 src/f1_dash/
   data/       Fase 1  Obtención: wrappers de FastF1 + caché
-    cache.py      activa el caché de disco (F1_DASH_CACHE)
+    cache.py      activa el caché de disco solo si se define F1_DASH_CACHE
     schedule.py   temporadas, eventos y sesiones disputadas; modos de fuente
     sessions.py   load_session, caché en memoria, errores de datos
   sampling/   Fase 2  Muestreo: reducir/normalizar datos para visualizar
@@ -82,7 +82,7 @@ Desde octubre de 2026 F1 exige una cuenta F1 TV (Access o superior) para el arch
 |---|---|---|
 | **Mirror** (servidor público) | `F1_DASH_SOURCE=mirror` | 2021–2022, sin credenciales |
 | **Cuenta F1 TV** (local) | `F1_USERNAME` y `F1_PASSWORD` en el entorno | Todas las temporadas; requiere `fastf1==3.9.0a0` (ya fijada en `pyproject.toml`) |
-| **Caché propio** | `F1_DASH_CACHED_ONLY=1` y tu caché en `F1_DASH_CACHE` (por defecto `.fastf1_cache`) | Solo las sesiones que ya tengas en disco |
+| **Caché propio** | `F1_DASH_CACHED_ONLY=1` y tu caché en la carpeta que indiques con `F1_DASH_CACHE` | Solo las sesiones que ya tengas en disco |
 
 El caché de FastF1 no se versiona (`.fastf1_cache/` está en `.gitignore`) ni se sube al servidor: cada quien trae el suyo.
 

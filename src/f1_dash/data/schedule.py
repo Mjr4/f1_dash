@@ -6,7 +6,7 @@ from functools import lru_cache
 import fastf1
 import pandas as pd
 
-from .cache import DEFAULT_CACHE_DIR
+from .cache import CACHE_DIR
 
 FIRST_SEASON = 2018  # límite de FastF1 (sin Ergast)
 RECENT_HOURS = 24  # FastF1 publica resultados/telemetría horas después; antes de eso el caché de disco puede quedar con datos parciales
@@ -43,7 +43,7 @@ def _cached() -> set[tuple[int, str, str]]:
     ponytail: nombres con caracteres que FastF1 transforma en la carpeta pueden no coincidir; revisar si falta algún evento.
     """
     out = set()
-    for d in DEFAULT_CACHE_DIR.glob("*/*/*"):
+    for d in CACHE_DIR.glob("*/*/*") if CACHE_DIR else []:
         if d.is_dir() and sum(f.stat().st_size for f in d.rglob("*") if f.is_file()) >= MIN_CACHED_BYTES:
             event = d.parent.name.split("_", 1)[1].replace("_", " ")
             session = d.name.split("_", 1)[1].replace("_", " ")

@@ -185,7 +185,7 @@ def test_cached_only_filtra_a_lo_que_hay_en_cache(tmp_path, monkeypatch):
     race.mkdir(parents=True)
     (race / "laps.ff1pkl").write_bytes(b"x" * schedule.MIN_CACHED_BYTES)
     (tmp_path / "2026" / "2026-10-11_Singapore_Grand_Prix" / "2026-10-10_Qualifying").mkdir()  # carga fallida: vacía
-    monkeypatch.setattr(schedule, "DEFAULT_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(schedule, "CACHE_DIR", tmp_path)
     monkeypatch.setattr(schedule, "_held", lambda y, e: ["Q", "R"])
     monkeypatch.setenv("F1_DASH_CACHED_ONLY", "1")
     assert schedule.seasons() == [2026]
@@ -210,7 +210,7 @@ def test_available_events_filtra_por_cache(tmp_path, monkeypatch):
     race.mkdir(parents=True)
     (race / "laps.ff1pkl").write_bytes(b"x" * schedule.MIN_CACHED_BYTES)
     df = pd.DataFrame({"EventName": ["Singapore Grand Prix", "Italian Grand Prix"]})
-    monkeypatch.setattr(schedule, "DEFAULT_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(schedule, "CACHE_DIR", tmp_path)
     monkeypatch.setattr(schedule, "events", lambda y: df)
     assert len(schedule.available_events(2026)) == 2
     monkeypatch.setenv("F1_DASH_CACHED_ONLY", "1")
@@ -223,3 +223,13 @@ def test_mirror_y_cached_only_juntos_es_error(monkeypatch):
     monkeypatch.setenv("F1_DASH_CACHED_ONLY", "1")
     with pytest.raises(ValueError, match="F1_DASH_SOURCE"):
         schedule.seasons()
+
+
+def test_sin_f1_dash_cache_no_hay_cache_de_disco(monkeypatch):
+    from f1_dash.data import cache, schedule
+    monkeypatch.setattr(cache, "CACHE_DIR", None)
+    monkeypatch.setattr(cache.fastf1.Cache, "enable_cache", lambda p: pytest.fail("no debe activarse"))
+    assert cache.enable_cache() is None
+    monkeypatch.setattr(schedule, "CACHE_DIR", None)
+    assert schedule._cached() == set()
+
