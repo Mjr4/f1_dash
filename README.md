@@ -27,12 +27,15 @@ src/f1_dash/
     builtin.py    los paneles incluidos
   service.py          render con caché TTL+LRU y alertas por webhook (usado por la UI)
   layout/     Fase 4  Modelo de dashboard: paneles, orden y config (JSON)
-    model.py
+    model.py      v1: lista ordenada con span (lo usa la UI Streamlit)
+    grid.py       v2: grilla libre de 12 columnas (x, y, w, h); migra v1 al cargar
+  api/        Fase 5b FastAPI: expone data/panels/layout/service por HTTP (app.py)
   ui/         Fase 5  Frontend (Streamlit): solo renderiza
     app.py
 tests/        pytest por capa, sin red (conftest.py reemplaza FastF1 por una sesión falsa)
   test_sessions.py  data/ (sesiones, calendario, modos de fuente)
   test_sampling.py, test_panels.py, test_layout.py, test_service.py
+  test_api.py       endpoints con TestClient (catálogo, render y sus errores, validación/migración de layout)
   test_ui.py        la UI de punta a punta con streamlit.testing (AppTest)
 scripts/      phase1_check.py: verificación manual de la capa de datos contra la red
 .github/workflows/ci.yml   pytest + comprobación de aislamiento de Streamlit
@@ -99,9 +102,12 @@ streamlit run src/f1_dash/ui/app.py       # la app
 
 - Tests con pytest por capa, con fixtures pequeños de una sesión real para no depender de la red.
 - Fase 1: script que carga una sesión (ej. 2021 French GP, `'Q'`), imprime resultados y vuelta más rápida; la segunda ejecución debe ser rápida (caché).
-- Aislamiento: `grep -r streamlit src/f1_dash/{data,sampling,panels,layout,service.py}` no debe devolver nada.
+- Aislamiento: `grep -rE "streamlit|fastapi" src/f1_dash/{data,sampling,panels,layout,service.py}` no debe devolver nada.
 - End-to-end: `streamlit run src/f1_dash/ui/app.py`, elegir un evento pasado, agregar 2-3 paneles, reordenarlos (↑ ↓) y ajustar su ancho (← →), descargar y volver a subir el layout.
 
 ## Estado
 
 Fases 0 a 5 hechas (`data/`, `sampling/`, `panels/`, `layout/`, `ui/app.py`). Paneles: resultados, tiempos por vuelta, telemetría, estrategia de neumáticos, mejor vuelta, posiciones, ritmo de carrera, mapa del circuito, clima, gap al líder, degradación de neumáticos y mensajes de dirección de carrera. La UI solo ofrece las sesiones ya disputadas y los paneles que aplican a la sesión, genera un control por parámetro (con el JSON como modo avanzado), avisa de sesiones recientes y aísla los errores por panel. CI en GitHub Actions.
+
+### Migración a FastAPI (en curso, rama `migracion-fastapi`)
+`f1_dash.api.app` expone `/api/seasons|events|sessions|recent|panels`, `POST /api/render` (`{figure}`, `{warning}`, 503 transitorio, 500 bug con alerta) y `POST /api/layout/validate` (acepta layout v1 o v2 y devuelve v2). Prueba local: `uvicorn f1_dash.api.app:app`. Falta el frontend con drag & drop (GridStack) y retirar Streamlit.
