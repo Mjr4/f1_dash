@@ -17,5 +17,5 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: pip install -e .[dev]
       - run: pytest -q
-      - name: Aislamiento de la UI (data, sampling, panels y layout no importan Streamlit)
-        run: "! grep -rn streamlit src/f1_dash/data src/f1_dash/sampling src/f1_dash/panels src/f1_dash/layout"
+      - name: Aislamiento de la UI (data, sampling, panels, layout y service no importan Streamlit)
+        run: "! grep -rn streamlit src/f1_dash/data src/f1_dash/sampling src/f1_dash/panels src/f1_dash/layout src/f1_dash/service.py"

@@ -46,3 +46,11 @@ def offline(monkeypatch):
     import streamlit as st
     st.cache_data.clear()
     st.cache_resource.clear()
+
+
+@pytest.fixture(autouse=True)
+def service_limpio():
+    """El caché y los avisos de `service` son globales al proceso: cada test parte de cero."""
+    from f1_dash import service
+    service._CACHE.clear()
+    service._ALERTED.clear()

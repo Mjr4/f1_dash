@@ -25,20 +25,21 @@ src/f1_dash/
   panels/     Fase 3  Componentes: transforman datos -> figura Plotly
     registry.py   clase base Panel, @register y render()
     builtin.py    los paneles incluidos
+  service.py          render con caché TTL+LRU y alertas por webhook (usado por la UI)
   layout/     Fase 4  Modelo de dashboard: paneles, orden y config (JSON)
     model.py
   ui/         Fase 5  Frontend (Streamlit): solo renderiza
     app.py
 tests/        pytest por capa, sin red (conftest.py reemplaza FastF1 por una sesión falsa)
   test_sessions.py  data/ (sesiones, calendario, modos de fuente)
-  test_sampling.py, test_panels.py, test_layout.py
+  test_sampling.py, test_panels.py, test_layout.py, test_service.py
   test_ui.py        la UI de punta a punta con streamlit.testing (AppTest)
 scripts/      phase1_check.py: verificación manual de la capa de datos contra la red
 .github/workflows/ci.yml   pytest + comprobación de aislamiento de Streamlit
 pyproject.toml            dependencias (fastf1 fijada a 3.9.0a0) y extra [dev]
 ```
 
-**Regla de migración:** `data`, `sampling`, `panels` y `layout` no importan Streamlit ni ninguna librería de UI. Migrar a FastAPI + frontend JS implica agregar una capa `api/` que exponga esas mismas funciones, sin reescribir la lógica.
+**Regla de migración:** `data`, `sampling`, `panels`, `layout` y `service` no importan Streamlit ni ninguna librería de UI. Migrar a FastAPI + frontend JS implica agregar una capa `api/` que exponga esas mismas funciones, sin reescribir la lógica.
 
 ## Fases
 
@@ -98,7 +99,7 @@ streamlit run src/f1_dash/ui/app.py       # la app
 
 - Tests con pytest por capa, con fixtures pequeños de una sesión real para no depender de la red.
 - Fase 1: script que carga una sesión (ej. 2021 French GP, `'Q'`), imprime resultados y vuelta más rápida; la segunda ejecución debe ser rápida (caché).
-- Aislamiento: `grep -r streamlit src/f1_dash/{data,sampling,panels,layout}` no debe devolver nada.
+- Aislamiento: `grep -r streamlit src/f1_dash/{data,sampling,panels,layout,service.py}` no debe devolver nada.
 - End-to-end: `streamlit run src/f1_dash/ui/app.py`, elegir un evento pasado, agregar 2-3 paneles, reordenarlos (↑ ↓) y ajustar su ancho (← →), descargar y volver a subir el layout.
 
 ## Estado

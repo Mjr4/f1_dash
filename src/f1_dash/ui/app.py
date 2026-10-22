@@ -1,16 +1,14 @@
 """UI Streamlit: solo renderiza. Toda la lógica vive en data/sampling/panels/layout."""
 import json
 import logging
-import os
-import threading
 
-import requests
 import streamlit as st
 
 from f1_dash.data.schedule import available_events, cached_only, seasons, session_is_recent, sessions_held
-from f1_dash.data.sessions import DataError, TransientError
+from f1_dash.data.sessions import DataError
 from f1_dash.layout import Layout
-from f1_dash.panels import REGISTRY, create, for_session, render
+from f1_dash.panels import REGISTRY, for_session
+from f1_dash.service import alertar, render_cached
 
 st.set_page_config(page_title="F1 Dash", layout="wide")
 if "layout" not in st.session_state:
@@ -64,38 +62,6 @@ if session_is_recent(year, event, session_type):
 
 if not layout.panels:
     st.info("Agrega paneles desde la barra lateral.")
-
-@st.cache_data(max_entries=64, ttl=3600, show_spinner="Cargando datos...")
-def cached_figure(panel_id: str, params_json: str, year: int, event: str, session_type: str):
-    """Figura (o texto del DataError) cacheada por panel+params+sesión; así un panel fallido no se re-ejecuta en cada rerun.
-
-    Los errores deterministas (`transient=False`) se devuelven como texto y se cachean.
-    Los transitorios (`transient=True`, ej. fallo de red) se relanzan: `st.cache_data`
-    no cachea excepciones, así que el siguiente rerun vuelve a intentar la descarga.
-    """
-    try:
-        fig = render(create(panel_id, json.loads(params_json)), year, event, session_type)
-    except DataError as e:
-        if getattr(e, "transient", False):
-            raise
-        return str(e)
-    return fig.update_layout(height=300 + 80 * len(list(fig.select_yaxes())), margin=dict(l=10, r=10, t=30, b=10))
-
-
-@st.cache_resource
-def _alertados() -> set:
-    return set()  # compartido por todas las sesiones del servidor; sobrevive a los reruns del script
-
-
-def alertar(panel_id: str, year: int, event: str, session_type: str, e: Exception):
-    """Avisa por webhook (F1_DASH_ALERT_WEBHOOK: Discord o Slack) una vez por panel+sesión+tipo de error."""
-    url = os.environ.get("F1_DASH_ALERT_WEBHOOK")
-    clave = (panel_id, year, event, session_type, type(e).__name__)
-    if not url or clave in _alertados():
-        return
-    _alertados().add(clave)
-    msg = f"F1 Dash: el panel {panel_id} falló en {year} {event} {session_type}: {type(e).__name__}: {e}"
-    threading.Thread(target=lambda: requests.post(url, json={"content": msg, "text": msg}, timeout=5), daemon=True).start()
 
 
 def control(label: str, prop: dict, value, key: str):
@@ -152,7 +118,8 @@ def draw(i: int, item):
                     st.text_area("JSON", json.dumps(current, indent=2), key=key, label_visibility="collapsed")
                     st.button("Aplicar", key=f"ap{i}", on_click=apply_params, args=(i, key))
         try:
-            fig = cached_figure(item.panel_id, json.dumps(panel.model_dump(), sort_keys=True), year, event, session_type)
+            with st.spinner("Cargando datos..."):
+                fig = render_cached(item.panel_id, panel.model_dump(), year, event, session_type)
         except DataError as e:
             if getattr(e, "transient", False):
                 st.error(str(e))
