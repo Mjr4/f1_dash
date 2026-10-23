@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F1 Dash</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/gridstack.js/10.3.1/gridstack.min.css">
+<style>
+  :root { --bg:#fff; --fg:#1a1a1a; --card:#f4f4f6; --line:#d0d0d6; --err:#b00020; color-scheme: light dark; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14141a; --fg:#e8e8ee; --card:#1f1f28; --line:#3a3a46; --err:#ff6b81; } }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px system-ui, sans-serif; }
+  header { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:8px 16px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); z-index:10; }
+  header h1 { font-size:18px; margin:0 8px 0 0; }
+  select, button, input { font:inherit; color:inherit; background:var(--card); border:1px solid var(--line); border-radius:4px; padding:4px 8px; }
+  button { cursor:pointer; }
+  #msg { padding:4px 16px; color:var(--err); }
+  #grid { padding:8px; }
+  .grid-stack-item-content { background:var(--card); border:1px solid var(--line); border-radius:6px; display:flex; flex-direction:column; overflow:hidden !important; }
+  .hd { display:flex; gap:4px; align-items:center; padding:4px 8px; cursor:move; border-bottom:1px solid var(--line); }
+  .hd b { flex:1; }
+  .hd button { padding:0 6px; }
+  .cfg { display:none; padding:6px 8px; border-bottom:1px solid var(--line); gap:8px; flex-wrap:wrap; }
+  .cfg.open { display:flex; }
+  .cfg label { display:flex; flex-direction:column; font-size:12px; }
+  .body { flex:1; min-height:0; overflow:auto; }
+  .note { padding:12px; } .note.err { color:var(--err); }
+</style>
+</head>
+<body>
+<header>
+  <h1>F1 Dash</h1>
+  <select id="year" aria-label="Temporada"></select>
+  <select id="event" aria-label="Evento"></select>
+  <select id="session" aria-label="Sesión"></select>
+  <select id="catalog" aria-label="Panel"></select>
+  <button id="add">+ Panel</button>
+  <button id="save">Descargar layout</button>
+  <button id="load">Cargar layout</button>
+  <input id="file" type="file" accept=".json,application/json" hidden>
+</header>
+<div id="msg" role="alert"></div>
+<div id="grid" class="grid-stack"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gridstack.js/10.3.1/gridstack-all.js"></script>
+<script src="/plotly.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const meta = new Map();            // id del widget -> {panel_id, params}
+let catalog = [], nextId = 0;
+const grid = GridStack.init({ column: 12, cellHeight: 40, margin: 4, handle: '.hd', float: true }, '#grid');
+
+async function api(path, body) {
+  const r = await fetch('/api/' + path, body && { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(typeof j.detail === 'string' ? j.detail : j.error || r.statusText);
+  return j;
+}
+const say = t => $('msg').textContent = t || '';
+const fill = (sel, xs) => { sel.replaceChildren(...xs.map(x => new Option(x.label ?? x, x.value ?? x))); };
+const ctx = () => ({ year: +$('year').value, event: $('event').value, session_type: $('session').value });
+
+async function loadYears() {
+  const { seasons } = await api('seasons');
+  fill($('year'), [...seasons].reverse());
+  await loadEvents();
+}
+async function loadEvents() {
+  fill($('event'), await api('events?year=' + $('year').value));
+  await loadSessions();
+}
+async function loadSessions() {
+  fill($('session'), await api(`sessions?year=${$('year').value}&event=${encodeURIComponent($('event').value)}`));
+  await loadCatalog();
+}
+async function loadCatalog() {
+  catalog = await api('panels?session_type=' + $('session').value);
+  fill($('catalog'), catalog.map(p => ({ label: p.title, value: p.id })));
+  const { recent } = await api(`recent?year=${$('year').value}&event=${encodeURIComponent($('event').value)}&session_type=${$('session').value}`);
+  if (recent) say('Sesión reciente: los datos pueden estar incompletos.');
+  grid.getGridItems().forEach(render);
+}
+
+function controls(el, id) {
+  const m = meta.get(id), p = catalog.find(c => c.id === m.panel_id), box = el.querySelector('.cfg');
+  const props = p ? p.schema.properties || {} : {};
+  box.replaceChildren(...Object.entries(props).map(([k, s]) => {
+    const t = s.type, inp = document.createElement('input'), cur = m.params[k] ?? s.default;
+    if (t === 'boolean') { inp.type = 'checkbox'; inp.checked = !!cur; }
+    else if (t === 'integer' || t === 'number') { inp.type = 'number'; inp.value = cur ?? ''; }
+    else { inp.value = JSON.stringify(cur ?? null); }   // listas/enums/opcionales: JSON
+    inp.onchange = () => {
+      try {
+        m.params[k] = t === 'boolean' ? inp.checked : (t === 'integer' || t === 'number') ? (inp.value === '' ? null : +inp.value) : JSON.parse(inp.value);
+        render(el);
+      } catch (e) { say(`${k}: ${e.message}`); }
+    };
+    const l = document.createElement('label'); l.title = s.description || ''; l.append(s.title || k, inp);
+    return l;
+  }));
+}
+
+async function render(el) {
+  const id = el.gridstackNode.id, m = meta.get(id), body = el.querySelector('.body');
+  body.className = 'body'; body.textContent = 'Cargando…';
+  try {
+    const out = await api('render', { panel_id: m.panel_id, params: m.params, ...ctx() });
+    if (out.warning) return void (body.innerHTML = '', body.append(Object.assign(document.createElement('div'), { className: 'note', textContent: out.warning })));
+    body.textContent = '';
+    out.figure.layout = { ...out.figure.layout, autosize: true, margin: { t: 30, r: 10, b: 30, l: 40 } };
+    Plotly.newPlot(body, out.figure.data, out.figure.layout, { responsive: true, displaylogo: false });
+  } catch (e) {
+    body.replaceChildren(Object.assign(document.createElement('div'), { className: 'note err', textContent: e.message }));
+  }
+}
+
+function addPanel(panel_id, params = {}, pos = { w: 6, h: 8 }) {
+  const id = String(nextId++), title = (catalog.find(c => c.id === panel_id) || {}).title || panel_id;
+  meta.set(id, { panel_id, params: { ...params } });
+  const el = grid.addWidget({ id, ...pos, content: '<div class="hd"><b></b><button title="Parámetros">⚙</button><button title="Quitar">✕</button></div><div class="cfg"></div><div class="body"></div>' });
+  const [cfg, del] = el.querySelectorAll('.hd button');
+  el.querySelector('.hd b').textContent = title;
+  cfg.onclick = () => el.querySelector('.cfg').classList.toggle('open');
+  del.onclick = () => { meta.delete(id); grid.removeWidget(el); };
+  controls(el, id);
+  render(el);
+}
+
+grid.on('resizestop', (_, el) => Plotly.Plots.resize(el.querySelector('.body')));
+
+$('year').onchange = () => loadEvents().catch(e => say(e.message));
+$('event').onchange = () => loadSessions().catch(e => say(e.message));
+$('session').onchange = () => loadCatalog().catch(e => say(e.message));
+$('add').onclick = () => $('catalog').value && addPanel($('catalog').value);
+
+$('save').onclick = () => {
+  const panels = grid.save(false).map(n => ({ ...meta.get(n.id), x: n.x, y: n.y, w: n.w, h: n.h }));
+  const a = Object.assign(document.createElement('a'), { download: 'layout.json', href: URL.createObjectURL(new Blob([JSON.stringify({ version: 2, panels }, null, 2)], { type: 'application/json' })) });
+  a.click(); URL.revokeObjectURL(a.href);
+};
+$('load').onclick = () => $('file').click();
+$('file').onchange = async e => {
+  try {
+    const lay = await api('layout/validate', JSON.parse(await e.target.files[0].text()));  // acepta v1 y v2
+    grid.removeAll(); meta.clear();
+    lay.panels.forEach(c => addPanel(c.panel_id, c.params, { x: c.x, y: c.y, w: c.w, h: c.h }));
+    say('');
+  } catch (err) { say('Layout inválido: ' + err.message); }
+  e.target.value = '';
+};
+
+loadYears().catch(e => say(e.message));
+</script>
+</body>
+</html>

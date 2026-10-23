@@ -70,3 +70,13 @@ def test_layout_celda_fuera_de_grilla(cell):
 def test_layout_version_y_panel_invalidos():
     assert client.post("/api/layout/validate", json={"version": 3, "panels": []}).status_code == 422
     assert client.post("/api/layout/validate", json={"version": 2, "panels": [{"panel_id": "nope", "x": 0, "y": 0, "w": 4}]}).status_code == 422
+
+
+def test_sirve_el_frontend():
+    r = client.get("/")
+    assert r.status_code == 200 and "GridStack" in r.text
+
+
+def test_sirve_plotly():
+    r = client.get("/plotly.min.js")
+    assert r.status_code == 200 and "plotly" in r.text[:2000].lower()

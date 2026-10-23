@@ -1,9 +1,12 @@
 """API HTTP (FastAPI): solo expone data/panels/layout/service. Sin estado: el layout vive en el cliente."""
 import json
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+import plotly
 from pydantic import BaseModel
 
 from f1_dash.data.schedule import available_events, cached_only, seasons, session_is_recent, sessions_held
@@ -77,3 +80,13 @@ def validate_layout(raw: dict[str, Any]):
         return GridLayout.loads(json.dumps(raw)).model_dump()
     except (ValueError, KeyError) as e:
         raise HTTPException(422, str(e))
+
+
+@app.get("/plotly.min.js")
+def plotly_js():
+    """Plotly.js del paquete Python: misma versión que genera las figuras y sin depender de un CDN."""
+    return FileResponse(Path(plotly.__file__).parent / "package_data" / "plotly.min.js", media_type="text/javascript")
+
+
+# Al final: las rutas /api tienen prioridad sobre el montaje en "/"
+app.mount("/", StaticFiles(directory=Path(__file__).parent.parent / "web", html=True), name="web")
